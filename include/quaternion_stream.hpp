@@ -19,8 +19,9 @@ constexpr const int MAX_ATTITUDE_LINE_CHARS = 248;
 /** @brief Left trim whitespace and '+' characters. */
 inline const char *skipws(const char *line) noexcept {
   const char *str = line;
-    while (*str && (*str==' ' || *str=='+') ++str;
-    return str;
+  while (*str && (*str == ' ' || *str == '+'))
+    ++str;
+  return str;
 }
 } /* namespace attitude_details */
 
@@ -51,6 +52,17 @@ template <int NumAngles> struct DsoQuaternionRecord<1, NumAngles> {
   std::array<double, NumAngles> ma;
 }; /* struct DsoQuaternionRecord<1, NumAngles> */
 
+/** @brief A quaternion record (specialization)
+ *
+ * Holds a single quaternion and and no angles
+ */
+template <> struct DsoQuaternionRecord<1, 0> {
+  /* reference time in TT */
+  dso::MjdEpoch mtt;
+  /* a (single) quaternion */
+  Eigen::Quaterniond mq;
+}; /* struct DsoQuaternionRecord<1, 0> */
+
 /** @brief Parse a record line from a DSO quaternion file.
  *
  * @tparam NumQuaternions Number of quaternions the file holds per line.
@@ -66,6 +78,25 @@ int parse_attitude_line(
   const int sz = std::strlen(line);
   const char *str = line;
   int error = 0;
+
+  /* parse date */
+  {
+    int mjday;
+    double secday;
+    auto res = std::from_chars(attitude_details::skipws(str), line + sz, mjday);
+    if (res.ec != std::errc{})
+      ++error;
+    str = res.ptr;
+    res = std::from_chars(attitude_details::skipws(str), line + sz, secday);
+    if (res.ec != std::errc{})
+      ++error;
+    str = res.ptr;
+    /* TODO
+     * we are --should be-- using a non-normalizing c'tor here, since seconds
+     * are [0,86400)
+     */
+    rec.mtt = MjdEpoch(mjday, dso::FractionalSeconds(secday));
+  }
 
   /* read quaternions first */
   for (int q = 0; q < NumQuaternions; q++) {
@@ -85,19 +116,26 @@ int parse_attitude_line(
   }
 
   /* read angles */
-  for (int a = 0; a < NumAngles; a++) {
-    auto res =
-        std::from_chars(attitude_details::skipws(str), line + sz, rec.ma[a]);
-    if (res.ec != std::errc{})
-      ++error;
-    str = res.ptr;
+  if constexpr (NumAngles > 0) {
+    for (int a = 0; a < NumAngles; a++) {
+      auto res =
+          std::from_chars(attitude_details::skipws(str), line + sz, rec.ma[a]);
+      if (res.ec != std::errc{})
+        ++error;
+      str = res.ptr;
+    }
   }
 
-  return (!error);
+  return error;
 }
 
+namespace satellite_details {
+/* This is an empty (base) class to assist inheritance. */
+class DsoAttitudeStreamBase {};
+} /* namespace satellite_details */
+
 template <int BufferSize, int NumQuaternions, int NumAngles>
-class DsoQuaternionStream {
+class DsoQuaternionStream : public satellite_details::DsoAttitudeStreamBase {
 private:
   using BufferEntryType = DsoQuaternionRecord<NumQuaternions, NumAngles>;
   using BufferType = std::array<BufferEntryType, BufferSize + 1>;
@@ -165,17 +203,27 @@ private:
    */
   int initialize() noexcept {
     if (!mstream.is_open()) {
+      fprintf(stderr,
+              "[ERROR] Stream is closed! Cannot initialize (traceback: %s)\n",
+              __func__);
       return 100;
     }
     char line[attitude_details::MAX_ATTITUDE_LINE_CHARS];
     int i = 0, error = 0;
     while (i < BufferSize && (!error)) {
+      /* parse record and store at index i */
       error = parse_next_record(i);
       ++i;
     }
     mbuf[BufferSize] = mbuf[BufferSize - 1];
     /* set last buffer element */
     mbuf[BufferSize].mtt = MjdEpoch::min();
+
+    if (error) {
+      fprintf(stderr,
+              "[ERROR] Failed parsing quaternion line: %s (traceback: %s)\n",
+              line, __func__);
+    }
     return error;
   }
 
@@ -265,11 +313,10 @@ private:
         return 30;
       }
       /* search for interval from the top of the buffer */
-      auto it =
-          std::lower_bound(mbuf.start(), mbuf.start() + cj + 1,
-                           [](const MjdEpoch &tt, const BufferEntryType &bt) {
-                             return tt < bt.mtt;
-                           });
+      it = std::lower_bound(mbuf.start(), mbuf.start() + cj + 1,
+                            [](const MjdEpoch &tt, const BufferEntryType &bt) {
+                              return tt < bt.mtt;
+                            });
       assert(it < mbuf.start() + cj + 1);
       cj = std::distance(it, mbuf.start()) - 1;
       return 0;
@@ -295,8 +342,13 @@ public:
   };
   DsoQuaternionStream(const DsoQuaternionStream &other) = delete;
   DsoQuaternionStream &operator=(const DsoQuaternionStream &other) = delete;
-  DsoQuaternionStream(DsoQuaternionStream &&other) noexcept;        // TODO
-  DsoQuaternionStream &operator=(const DsoQuaternionStream &other); // TODO
+  DsoQuaternionStream(DsoQuaternionStream &&other) noexcept
+      : mstream(std::move(other.mstream)), mbuf(std::move(other.mbuf)) {}
+  DsoQuaternionStream &operator=(DsoQuaternionStream &&other) noexcept {
+    mstream = std::move(other.mstream);
+    mbuf = std::move(other.mbuf);
+    return *this;
+  }
 }; /* DsoQuaternionStream */
 
 } /* namespace dso */

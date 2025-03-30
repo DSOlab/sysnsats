@@ -1,4 +1,5 @@
-target_sources(satmsys
+target_sources(sysnsats
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/lib/cnes_satellite_correction.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cnes_satellite_correction.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/csatid.cpp
 )

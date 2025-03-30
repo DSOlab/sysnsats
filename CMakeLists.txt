@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 
 project(
-  satmsys
+  sysnsats
   VERSION 1.1.0
   DESCRIPTION "Satellite systems and specifics"
   LANGUAGES CXX
@@ -59,18 +59,13 @@ else()
 endif()
 
 # the library and includes
-add_library(satmsys)
-target_include_directories(satmsys
+add_library(sysnsats)
+target_include_directories(sysnsats
 PUBLIC
   # Public headers during build time
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   # Public headers during install time
-  $<INSTALL_INTERFACE:include/satmsys>
-PRIVATE
-  # Private/internal headers only during build time (src/core)
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/core>
-  # Internal/private headers during install time (from include/satmsys/core)
-  $<INSTALL_INTERFACE:include/satmsys/core>
+  $<INSTALL_INTERFACE:include/sysnsats>
 )
 
 # library source code
@@ -88,25 +83,25 @@ if(BUILD_TESTING)
 endif()
 
 # install library
-install(TARGETS satmsys
-        EXPORT satmsysTargets
+install(TARGETS sysnsats
+        EXPORT sysnsatsTargets
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin
 )
 
-# Install public headers at: $PREFIX/satmsys/...
+# Install public headers at: $PREFIX/sysnsats/...
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-	DESTINATION include/satmsys
+	DESTINATION include/sysnsats
 )
 
-# Install private headers to a separate directory $PREFIX/satmsys/core
+# Install private headers to a separate directory $PREFIX/sysnsats/core
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/core/ 
-        DESTINATION include/satmsys/core
+        DESTINATION include/sysnsats/core
 )
 
-install(EXPORT satmsysTargets
-        FILE satmsysTargets.cmake
+install(EXPORT sysnsatsTargets
+        FILE sysnsatsTargets.cmake
         NAMESPACE dso::
         DESTINATION lib/cmake
 )
@@ -114,11 +109,11 @@ install(EXPORT satmsysTargets
 include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
-  "satmsysConfigVersion.cmake"
-  VERSION ${satmsys_version}
+  "sysnsatsConfigVersion.cmake"
+  VERSION ${sysnsats_version}
   COMPATIBILITY AnyNewerVersion
 )
 
-install(FILES "satmsysConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/satmsysConfigVersion.cmake"
+install(FILES "sysnsatsConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/sysnsatsConfigVersion.cmake"
   DESTINATION lib/cmake
 )

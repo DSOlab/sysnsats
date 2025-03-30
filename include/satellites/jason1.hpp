@@ -2,11 +2,13 @@
 #define __DSO_JASON1_MACROMODEL_HPP__
 
 #include "core/macromodel_surface_element.hpp"
-#include "satellites.hpp"
+#include "satellites/satellites_core.hpp"
 #include <array>
 
 namespace dso {
-template <> struct SatelliteMacromodel<SATELLITE::JASON1> {
+template <>
+struct SatelliteMacromodel<SATELLITE::JASON1>
+    : public satellite_details::BaseMacromodel {
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {
       {{1.65e0,
         {1e0, 0e0, 0e0},

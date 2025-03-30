@@ -1,12 +1,14 @@
-#include "doris.hpp"
+#include "systems/doris.hpp"
 #include <stdexcept>
 
 char dso::SatelliteSystemObservationType<dso::SATELLITE_SYSTEM::DORIS>::
     obst2char(dso::SatelliteSystemObservationType<
-              dso::SATELLITE_SYSTEM::DORIS>::ObservationType o) {
+              dso::SATELLITE_SYSTEM::DORIS>::ObservationType o)
+{
   using ObsType = dso::SatelliteSystemObservationType<
       dso::SATELLITE_SYSTEM::DORIS>::ObservationType;
-  switch (o) {
+  switch (o)
+  {
   case (ObsType::phase):
     return 'L';
   case (ObsType::pseudorange):
@@ -30,10 +32,12 @@ char dso::SatelliteSystemObservationType<dso::SATELLITE_SYSTEM::DORIS>::
 dso::SatelliteSystemObservationType<
     dso::SATELLITE_SYSTEM::DORIS>::ObservationType
 dso::SatelliteSystemObservationType<dso::SATELLITE_SYSTEM::DORIS>::char2obst(
-    char c) {
+    char c)
+{
   using ObsType = dso::SatelliteSystemObservationType<
       dso::SATELLITE_SYSTEM::DORIS>::ObservationType;
-  switch (c) {
+  switch (c)
+  {
   case ('L'):
     return ObsType::phase;
   case ('C'):

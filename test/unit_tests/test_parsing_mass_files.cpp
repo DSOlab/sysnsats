@@ -1,6 +1,5 @@
-#include "satellites.hpp"
+#include "satellites/satellites_core.hpp"
 #include <cstdio>
-#include <datetime/core/datetime_io_core.hpp>
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -8,31 +7,35 @@
 
 constexpr const double TOLERANCE = 1e-12;
 
-int main(int argc, char *argv[]) {
-  if (argc != 2) {
+int main(int argc, char *argv[])
+{
+  if (argc != 2)
+  {
     fprintf(stderr, "Usage: %s [ja3mass.txt]\n", argv[0]);
     return 1;
   }
 
   double dmass;
-  Eigen::Matrix<double,3,1> dxyz;
+  Eigen::Matrix<double, 3, 1> dxyz;
 
   {
-    dso::MjdEpoch t(dso::year(2016), dso::month(1), dso::day_of_month(19),56255.0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    dso::MjdEpoch t(dso::year(2016), dso::month(1), dso::day_of_month(19), 56255.0);
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
     printf("%.12e %.12e %.12e %.12e\n", dmass, dxyz(0), dxyz(1), dxyz(2));
-    assert(std::abs(dmass-0e0)<TOLERANCE);
-    assert(std::abs(dxyz(0)- 0e0)<TOLERANCE);
-    assert(std::abs(dxyz(1)- 0e0)<TOLERANCE);
-    assert(std::abs(dxyz(2)- 0e0)<TOLERANCE);
+    assert(std::abs(dmass - 0e0) < TOLERANCE);
+    assert(std::abs(dxyz(0) - 0e0) < TOLERANCE);
+    assert(std::abs(dxyz(1) - 0e0) < TOLERANCE);
+    assert(std::abs(dxyz(2) - 0e0) < TOLERANCE);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2016), dso::month(1), dso::day_of_month(19), 56256.0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -41,10 +44,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2016), dso::month(2), dso::day_of_month(19), 24597.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -53,10 +57,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2016), dso::month(2), dso::day_of_month(19), 24599.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -65,10 +70,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2024), dso::month(10), dso::day_of_month(27), 22706.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -77,10 +83,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2024), dso::month(10), dso::day_of_month(27), 22708.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -89,10 +96,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2025), dso::month(3), dso::day_of_month(16), 22417.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
@@ -101,10 +109,11 @@ int main(int argc, char *argv[]) {
     assert(dxyz(1) == 0e0);
     assert(dxyz(2) == 0e0);
   }
-  
+
   {
     dso::MjdEpoch t(dso::year(2025), dso::month(3), dso::day_of_month(16), 22419.000e0);
-    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz)) {
+    if (dso::cnes_satellite_correction(argv[1], t, dmass, dxyz))
+    {
       fprintf(stderr, "ERROR. Failed\n");
       return 1;
     }
