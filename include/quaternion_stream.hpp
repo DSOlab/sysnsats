@@ -2,6 +2,7 @@
 #define __DSO_ATTITUDE_QUATERNION_STREAM_HPP__
 
 #include "datetime/calendar.hpp"
+#include "datetime/datetime_write.hpp"
 #include "eigen3/Eigen/Geometry"
 #include <algorithm>
 #include <array>
@@ -36,6 +37,22 @@ template <int NumQuaternions, int NumAngles> struct DsoQuaternionRecord {
   std::array<Eigen::Quaterniond, NumQuaternions> mq;
   /* a list or (rotation) angles */
   std::array<double, NumAngles> ma;
+  /** @brief cast compile time arrays to dynamic arrays.
+   *
+   * @param[out] quaternions An array of Eigen::Quaterniond, which should be at
+   * least of size NumQuaternions. At output it will hold the instance's
+   * quaternions, i.e. a copy of this->mq.
+   * @param[out] angles An array of doubles which should be at
+   * least of size NumAngles. At output it will hold the instance's
+   * angles, i.e. a copy of this->ma.
+   */
+  constexpr void to_dynamic(Eigen::Quaterniond *quaternions,
+                            double *angles) const noexcept {
+    for (int i = 0; i < NumQuaternions; i++)
+      quaternions[i] = mq[i];
+    for (int i = 0; i < NumAngles; i++)
+      angles[i] = ma[i];
+  }
 }; /* struct DsoQuaternionRecord<NumQuaternions, NumAngles> */
 
 /** @brief A quaternion record (specialization)
@@ -50,6 +67,20 @@ template <int NumAngles> struct DsoQuaternionRecord<1, NumAngles> {
   Eigen::Quaterniond mq;
   /* a list or (rotation) angles */
   std::array<double, NumAngles> ma;
+  /** @brief cast compile time arrays to dynamic arrays.
+   *
+   * @param[out] quaternion A (pointer to) Eigen::Quaterniond. At output it
+   * will hold the instance's quaternion, i.e. a copy of this->mq.
+   * @param[out] angles An array of doubles which should be at
+   * least of size NumAngles. At output it will hold the instance's
+   * angles, i.e. a copy of this->ma.
+   */
+  constexpr void to_dynamic(Eigen::Quaterniond *quaternion,
+                            double *angles) const noexcept {
+    *quaternion = mq;
+    for (int i = 0; i < NumAngles; i++)
+      angles[i] = ma[i];
+  }
 }; /* struct DsoQuaternionRecord<1, NumAngles> */
 
 /** @brief A quaternion record (specialization)
@@ -61,6 +92,15 @@ template <> struct DsoQuaternionRecord<1, 0> {
   dso::MjdEpoch mtt;
   /* a (single) quaternion */
   Eigen::Quaterniond mq;
+  /** @brief cast compile time arrays to dynamic arrays.
+   *
+   * @param[out] quaternion A (pointer to) Eigen::Quaterniond. At output it
+   * will hold the instance's quaternion, i.e. a copy of this->mq.
+   */
+  constexpr void to_dynamic(Eigen::Quaterniond *quaternion,
+                            [[maybe_unused]] double *) const noexcept {
+    *quaternion = mq;
+  }
 }; /* struct DsoQuaternionRecord<1, 0> */
 
 /** @brief Parse a record line from a DSO quaternion file.
@@ -131,7 +171,12 @@ int parse_attitude_line(
 
 namespace satellite_details {
 /* This is an empty (base) class to assist inheritance. */
-class DsoAttitudeStreamBase {};
+class DsoAttitudeStreamBase {
+public:
+  virtual int angles_at(const MjdEpoch &tt, Eigen::Quaterniond *quaternions,
+                        double *angles) noexcept = 0;
+  virtual ~DsoAttitudeStreamBase() noexcept {};
+};
 } /* namespace satellite_details */
 
 template <int BufferSize, int NumQuaternions, int NumAngles>
@@ -147,28 +192,88 @@ private:
   /** A buffer holding DsoQuaternionRecord's. */
   BufferType mbuf;
 
-  enum class BufferSearchResult : char {
-    BeforeFirstRecord,
-    AfterLastRecord,
-    RangeInBuffer
-  }; /* BufferSearchResult */
+  using SlerpReturnType =
+      std::conditional<(NumQuaternions > 1),
+                       std::array<Eigen::Quaterniond, NumQuaternions>,
+                       Eigen::Quaterniond>;
 
-  [[deprecated]]
-  BufferSearchResult range_in_buffer(const MjdEpoch &t, int &idx) noexcept {
-    auto it =
-        std::lower_bound(mbuf.begin(), mbuf.end() - 1, t,
-                         [](const MjdEpoch &tt, const BufferEntryType &be) {
-                           return tt < be.mtt;
-                         });
-    if (it == mbuf.begin()) {
-      return BufferSearchResult::BeforeFirstRecord;
-    } else if (it == mbuf.end() - 1) {
-      return BufferSearchResult::AfterLastRecord;
-    } else [[likely]] {
-      idx = std::distance(mbuf.begin(), it) - 1;
+  SlerpReturnType qslerp(const MjdEpoch &tt) const noexcept {
+    /* t2 - t1 in seconds */
+    const double interval_sec =
+        mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
+            mbuf[cj].mtt);
+    /* tt - t1 in seconds */
+    const double part_sec =
+        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].mtt);
+    /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
+    const double f = part_sec / interval_sec;
+    /* slerp interpolation */
+    if constexpr (NumQuaternions > 1) {
+      std::array<Eigen::Quaterniond, NumQuaternions> arr;
+      auto it0 = mbuf[cj].mq.cbegin();
+      auto it1 = mbuf[cj + 1].mq.cbegin();
+      for (int i = 0; i < NumQuaternions; i++) {
+        arr[i] = it0->slerp(f, *it1);
+        ++it0;
+        ++it1;
+      }
+      return arr;
+    } else {
+      return mbuf[cj].mq.slerp(f, mbuf[cj + 1].mq);
     }
-    return BufferSearchResult::RangeInBuffer;
   }
+
+  using AngleInterpolationReturnType =
+      std::conditional<(NumAngles > 1), std::array<double, NumAngles>, double>;
+
+  AngleInterpolationReturnType aintrpl(const MjdEpoch &tt) const noexcept {
+    /* t2 - t1 in seconds */
+    const double interval_sec =
+        mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
+            mbuf[cj].mtt);
+    /* tt - t1 in seconds */
+    const double part_sec =
+        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].mtt);
+    /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
+    const double f = part_sec / interval_sec;
+    /* linear interpolation */
+    if constexpr (NumAngles > 1) {
+      std::array<double, NumAngles> arr;
+      auto it0 = mbuf[cj].ma.cbegin();
+      auto it1 = mbuf[cj + 1].ma.cbegin();
+      for (int i = 0; i < NumAngles; i++) {
+        arr[i] = (it0->ma + f * (it1->ma - it0->ma));
+        ++it0;
+        ++it1;
+      }
+      return arr;
+    } else {
+      return mbuf[cj].ma + f * (mbuf[cj + 1].ma - mbuf[cj].ma);
+    }
+  }
+
+  // enum class BufferSearchResult : char {
+  //   BeforeFirstRecord,
+  //   AfterLastRecord,
+  //   RangeInBuffer
+  // }; /* BufferSearchResult */
+
+  //[[deprecated]]
+  // BufferSearchResult range_in_buffer(const MjdEpoch &t, int &idx) noexcept {
+  //  auto it =
+  //      std::lower_bound(mbuf.begin(), mbuf.end() - 1, t,
+  //                       [](const MjdEpoch &tt, const BufferEntryType &be) {
+  //                         return tt < be.mtt;
+  //                       });
+  //  if (it == mbuf.begin()) {
+  //    return BufferSearchResult::BeforeFirstRecord;
+  //  } else if (it == mbuf.end() - 1) {
+  //    return BufferSearchResult::AfterLastRecord;
+  //  } else [[likely]] {
+  //    idx = std::distance(mbuf.begin(), it) - 1;
+  //  }
+  //  return BufferSearchResult::RangeInBuffer;
+  //}
 
   /** @brief Read and parse the next line of the (member) stream.
    * The resolved instance will be stored in mbuf[idx].
@@ -349,6 +454,40 @@ public:
     mbuf = std::move(other.mbuf);
     return *this;
   }
+  int angles_at(const MjdEpoch &tt, Eigen::Quaterniond *quaternions,
+                double *angles) noexcept {
+    /* lets get at the right interval (in buffer) */
+    if (this->hunt(tt)) {
+      char buf[64];
+      fprintf(stderr,
+              "[ERROR] Failed to get measured attitude for epoch: %s (TT) "
+              "(traceback: %s)\n",
+              to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(tt, buf),
+              __func__);
+    }
+
+    /* interpolate quaternion(s) */
+    const auto qs = this->qslerp(tt);
+    if constexpr (NumQuaternions > 1)
+      for (int i = 0; i < NumQuaternions; i++)
+        quaternions[i] = qs[i];
+    else
+      *quaternions = qs;
+
+    /* interpolate angle(s) */
+    if constexpr (NumAngles == 0) {
+      ;
+    } else if constexpr (NumAngles == 1) {
+      *angles = this->aintrpl(tt);
+    } else {
+      auto as = this->aintrpl(tt);
+      for (int i = 0; i < NumAngles; i++)
+        angles[i] = as[i];
+    }
+
+    return 0;
+  }
+
 }; /* DsoQuaternionStream */
 
 } /* namespace dso */

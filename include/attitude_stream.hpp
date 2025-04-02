@@ -76,6 +76,15 @@ public:
   int load_attitude(const char *fn) noexcept {
     return (this->matt = this->init_attitude_stream(fn)) == nullptr;
   }
+
+  int attitude_at(const MjdEpoch &tt, Eigen::Quaterniond *quaternions,
+                  double *angles) noexcept {
+    if (matt) {
+      return matt->angles_at(tt, quaternions, angles);
+    }
+
+    return -100;
+  }
 };
 
 } /* namespace dso */

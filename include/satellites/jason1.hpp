@@ -1,8 +1,29 @@
 #ifndef __DSO_JASON1_MACROMODEL_HPP__
 #define __DSO_JASON1_MACROMODEL_HPP__
 
+/* @file
+ * Jaon-1 Macromodel according to:
+ * L. Cerri, A. Couhert, P. Ferrage, DORIS satellites models implemented in 
+ * POE processing, available at:
+ * https://ids-doris.org/documents/BC/satellites/DORISSatelliteModels.pdf
+ * Version: Ed.Rev.Date 1.19.21/03/2025
+ *
+ * Jason-1 has two solar panels, which can rotate w.r.t the Y-axis (Bframe).
+ * The attitude is distributed by CNES via:
+ *  * A body-frame quaternion, and
+ *  * Left- and Right- panel rotation angles.
+ *
+ * Hence, to get e.g. the norma vector of each surface j from the body frame 
+ * (B) to the inertial frame (I):
+ *  * j belongs to the body frame: n_I = q * n_B
+ *  * j is either of the panels: n_I = q * ( R2(theta) * n_B )
+ *    where theta is rotation angle for the left or right solar array.
+ *
+ */
+
 #include "core/macromodel_surface_element.hpp"
 #include "satellites/satellites_core.hpp"
+#include <vector>
 #include <array>
 
 namespace dso
@@ -13,57 +34,66 @@ struct SatelliteMacromodel<SATELLITE::JASON1>
 {
     static constexpr std::array<MacromodelSurfaceElement, 8> model = {
         {{1.65e0,
-          {1e0, 0e0, 0e0},
-          {0.0938e0, 0.2811e0, 0.2078e0},
-          {0.4250e0, 0.1780e0, -.0260}},
+          1e0, 0e0, 0e0,
+          0.0938e0, 0.2811e0, 0.2078e0,
+          0.4250e0, 0.1780e0, -.0260},
          {1.65e0,
-          {-1e0, 0e0, 0e0},
-          {0.4340e0, 0.2150e0, 0.0050e0},
-          {0.4080e0, 0.1860e0, -.0120}},
+          -1e0, 0e0, 0e0,
+          0.4340e0, 0.2150e0, 0.0050e0,
+          0.4080e0, 0.1860e0, -.0120},
          {3.e0,
-          {0e0, 1e0, 0e0},
-          {1.1880e0, -.0113e0, -.0113e0},
-          {0.3340e0, 0.3420e0, 0.2490}},
+          0e0, 1e0, 0e0,
+          1.1880e0, -.0113e0, -.0113e0,
+          0.3340e0, 0.3420e0, 0.2490},
          {3.e0,
-          {0e0, -1e0, 0e0},
-          {1.2002e0, -.0044e0, -.0044e0},
-          {0.2740e0, 0.3690e0, 0.2970}},
+          0e0, -1e0, 0e0,
+          1.2002e0, -.0044e0, -.0044e0,
+          0.2740e0, 0.3690e0, 0.2970},
          {3.1e0,
-          {0e0, 0e0, 1e0},
-          {0.2400e0, 0.4020e0, 0.3300e0},
-          {0.2360e0, 0.3820e0, 0.3090}},
+          0e0, 0e0, 1e0,
+          0.2400e0, 0.4020e0, 0.3300e0,
+          0.2360e0, 0.3820e0, 0.3090},
          {3.1e0,
-          {0e0, 0e0, -1e0},
-          {0.3180e0, 0.3700e0, 0.2670e0},
-          {0.2980e0, 0.3360e0, 0.2400}},
+          0e0, 0e0, -1e0,
+          0.3180e0, 0.3700e0, 0.2670e0,
+          0.2980e0, 0.3360e0, 0.2400},
          /* solar array */
          {9.8e0,
-          {1e0, 0e0, 0e0},
-          {0.1940e0, 0.0060e0, 0.9470e0},
-          {0.0970e0, 0.0980e0, 0.8030e0}},
+          1e0, 0e0, 0e0,
+          0.1940e0, 0.0060e0, 0.9470e0,
+          0.0970e0, 0.0980e0, 0.8030e0},
          {9.8e0,
-          {-1e0, 0e0, 0e0},
-          {0.0040e0, 0.2980e0, 0.6970e0},
-          {0.0350e0, 0.0350e0, 0.9310e0}}}};
+          -1e0, 0e0, 0e0,
+          0.0040e0, 0.2980e0, 0.6970e0,
+          0.0350e0, 0.0350e0, 0.9310e0}}};
 
     std::vector<MacromodelSurfaceElement>
     rotate_macromodel(Eigen::Quaterniond &qbody,
-                      const double *theta) const noexcept
+                      const double *thetas) const noexcept
     {
-        std::vector<MacromodelSurfaceElement> plates;
-        plates.reserve(model.size());
-        for (int i = 0; i < num_plates(); i++)
-        {
-            Eigen::Vector3d n =
-                qbody * Eigen::Map<Eigen::Vector3d>(model[i].mnormal);
+        std::vector<MacromodelSurfaceElement> rotated;
+        rotated.reserve(model.size());
+        /* iterator to model (every plate) */
+        auto it = model.cbegin();
+
+        /* body frame */
+        for (int i = 0; i < num_plates(); i++) {
+            rotated.emplace_back(*it);
+            rotated[i].normal() = qbody * it->normal();
+            ++it;
         }
-        for (int i = 0; i < num_solar_arrays(); i++)
-        {
-            Eigen::Vector3d n =
+
+        /* solar array */
+        for (int i = 0; i < num_solar_arrays(); i++) {
+            rotated.emplace_back(*it);
+            rotated[num_plates() + i].normal() =
                 qbody *
-                (Eigen::AngleAxisd(theta[i], Eigen::Vector3d::UnitY()) *
-                 Eigen::Map<Eigen::Vector3d>(model[num_plates() + i].mnormal));
+                (Eigen::AngleAxisd(thetas[i], Eigen::Vector3d::UnitY()) *
+                 it->normal());
+            ++it;
         }
+
+        return rotated;
     }
 
     /* number of body-frame plates in macromodel */
