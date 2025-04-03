@@ -24,180 +24,142 @@ inline const char *skipws(const char *line) noexcept {
     ++str;
   return str;
 }
+
+struct MeasuredAttitudeData {
+  /* epoch of measured attitude in TT */
+  MjdEpoch mtt;
+  /* number of quaternions stored */
+  int mnq;
+  /* array of quaternions */
+  Eigen::Quaterniond *mqs = nullptr;
+  /* number of angles stored */
+  int mna;
+  /* array of angles */
+  double *mas = nullptr;
+
+  /** @brief We will be using the fact that an Eigen::Quaterniond is 4 doubles.
+   */
+  static_assert(sizeof(Eigen::Quaterniond) == 4 * sizeof(double),
+                "Eigen::Quaterniond is not 4 doubles in size!");
+
+  /** @brief Constructor.
+   *
+   * @param[in] nq Number of quaternions.
+   * @param[in] na Number of angles.
+   * @param[in] t  (Optional) epoch of measured attitude, else min possible
+   * date.
+   */
+  MeasuredAttitudeData(int nq, int na,
+                       const MjdEpoch &t = MjdEpoch::min()) noexcept
+      : mtt(t), mnq(nq), mqs(mnq ? new Eigen::Quaterniond[mnq] : nullptr),
+        mna(na), mas(mna ? new double[mna] : nullptr) {}
+
+  /** @brief Destructor. */
+  ~MeasuredAttitudeData() noexcept {
+    if (mnq)
+      delete[] mqs;
+    if (mna)
+      delete[] mas;
+  }
+
+  /** @brief Copy Constructor. */
+  MeasuredAttitudeData(const MeasuredAttitudeData &other) noexcept
+      : mtt(other.mtt), mnq(other.mnq),
+        mqs(mnq ? new Eigen::Quaterniond[mnq] : nullptr), mna(other.mna),
+        mas(mna ? new double[mna] : nullptr) {
+    // for (int i = 0; i < mnq; i++)
+    //   mqs[i] = other.mqs[i];
+    std::memcpy(mqs, other.mqs, sizeof(double) * 4 * mnq);
+    std::memcpy(mas, other.mas, sizeof(double) * mna);
+  }
+
+  /** @brief Move constructor */
+  MeasuredAttitudeData(MeasuredAttitudeData &&other) noexcept
+      : mtt(other.mtt), mnq(other.mnq), mqs(other.mqs), mna(other.mna),
+        mas(other.mas) {
+    other.mnq = other.mna = 0;
+  }
+
+  /** @brief Assignment operator. */
+  MeasuredAttitudeData &operator=(const MeasuredAttitudeData &other) noexcept {
+    if (this != &other) {
+      mtt = other.mtt;
+      mnq = other.mnq;
+      mqs = mnq ? new Eigen::Quaterniond[mnq] : nullptr;
+      std::memcpy(mqs, other.mqs, sizeof(double) * 4 * mnq);
+      mna = other.mna;
+      mas = mna ? new double[mna] : nullptr;
+      std::memcpy(mas, other.mas, sizeof(double) * mna);
+    }
+    return *this;
+  }
+
+  /** @brief Move assignment operator. */
+  MeasuredAttitudeData &operator=(MeasuredAttitudeData &&other) noexcept {
+    mtt = other.mtt;
+    mnq = other.mnq;
+    mqs = other.mqs;
+    mna = other.mna;
+    mas = other.mas;
+    other.mnq = other.mna = 0;
+    return *this;
+  }
+}; /* struct MeasuredAttitudeData */
 } /* namespace attitude_details */
-
-/** @brief A quaternion record.
- *
- * Holds any number of quaternions and angles (e.g. solar array angles).
- */
-template <int NumQuaternions, int NumAngles> struct DsoQuaternionRecord {
-  /* reference time in TT */
-  dso::MjdEpoch mtt;
-  /* a list of quaternions */
-  std::array<Eigen::Quaterniond, NumQuaternions> mq;
-  /* a list or (rotation) angles */
-  std::array<double, NumAngles> ma;
-  /** @brief cast compile time arrays to dynamic arrays.
-   *
-   * @param[out] quaternions An array of Eigen::Quaterniond, which should be at
-   * least of size NumQuaternions. At output it will hold the instance's
-   * quaternions, i.e. a copy of this->mq.
-   * @param[out] angles An array of doubles which should be at
-   * least of size NumAngles. At output it will hold the instance's
-   * angles, i.e. a copy of this->ma.
-   */
-  constexpr void to_dynamic(Eigen::Quaterniond *quaternions,
-                            double *angles) const noexcept {
-    for (int i = 0; i < NumQuaternions; i++)
-      quaternions[i] = mq[i];
-    for (int i = 0; i < NumAngles; i++)
-      angles[i] = ma[i];
-  }
-}; /* struct DsoQuaternionRecord<NumQuaternions, NumAngles> */
-
-/** @brief A quaternion record (specialization)
- *
- * Holds a single quaternion and and any number of angles (e.g. solar array
- * angles).
- */
-template <int NumAngles> struct DsoQuaternionRecord<1, NumAngles> {
-  /* reference time in TT */
-  dso::MjdEpoch mtt;
-  /* a (single) quaternion */
-  Eigen::Quaterniond mq;
-  /* a list or (rotation) angles */
-  std::array<double, NumAngles> ma;
-  /** @brief cast compile time arrays to dynamic arrays.
-   *
-   * @param[out] quaternion A (pointer to) Eigen::Quaterniond. At output it
-   * will hold the instance's quaternion, i.e. a copy of this->mq.
-   * @param[out] angles An array of doubles which should be at
-   * least of size NumAngles. At output it will hold the instance's
-   * angles, i.e. a copy of this->ma.
-   */
-  constexpr void to_dynamic(Eigen::Quaterniond *quaternion,
-                            double *angles) const noexcept {
-    *quaternion = mq;
-    for (int i = 0; i < NumAngles; i++)
-      angles[i] = ma[i];
-  }
-}; /* struct DsoQuaternionRecord<1, NumAngles> */
-
-/** @brief A quaternion record (specialization)
- *
- * Holds a single quaternion and and no angles
- */
-template <> struct DsoQuaternionRecord<1, 0> {
-  /* reference time in TT */
-  dso::MjdEpoch mtt;
-  /* a (single) quaternion */
-  Eigen::Quaterniond mq;
-  /** @brief cast compile time arrays to dynamic arrays.
-   *
-   * @param[out] quaternion A (pointer to) Eigen::Quaterniond. At output it
-   * will hold the instance's quaternion, i.e. a copy of this->mq.
-   */
-  constexpr void to_dynamic(Eigen::Quaterniond *quaternion,
-                            [[maybe_unused]] double *) const noexcept {
-    *quaternion = mq;
-  }
-}; /* struct DsoQuaternionRecord<1, 0> */
 
 /** @brief Parse a record line from a DSO quaternion file.
  *
- * @tparam NumQuaternions Number of quaternions the file holds per line.
- * @tparam NumAngles      Number of angles the file holds per line.
+ * @param[in] num_quaternions Number of quaternions the file holds per line.
+ * @param[in] num_angles      Number of angles the file holds per line.
  * @param[in] line The record line.
- * @param[out] rec The resolved instance, if the line was successefully parsed.
+ * @param[out] tt The epoch record of the line resolved.
+ * @param[out] qout An array of Eigen::Quaterniond's of size at least
+ * num_quaternions. At output (if successeful), the first num_quaternions will
+ * hold the quaternions parsed.
+ * @param[out] aout An array of doubles of size at least num_angles. At output
+ * (if successeful), the first num_angles will hold the angles parsed.
  * @return Anything other than 0 denotes an error.
  */
-template <int NumQuaternions, int NumAngles>
-int parse_attitude_line(
-    const char *line,
-    DsoQuaternionRecord<NumQuaternions, NumAngles> &rec) noexcept {
-  const int sz = std::strlen(line);
-  const char *str = line;
-  int error = 0;
+int parse_attitude_line(const char *line, int num_quaternions, int num_angles,
+                        MjdEpoch &tt, Eigen::Quaterniond *qout,
+                        double *aout) noexcept;
 
-  /* parse date */
-  {
-    int mjday;
-    double secday;
-    auto res = std::from_chars(attitude_details::skipws(str), line + sz, mjday);
-    if (res.ec != std::errc{})
-      ++error;
-    str = res.ptr;
-    res = std::from_chars(attitude_details::skipws(str), line + sz, secday);
-    if (res.ec != std::errc{})
-      ++error;
-    str = res.ptr;
-    /* TODO
-     * we are --should be-- using a non-normalizing c'tor here, since seconds
-     * are [0,86400)
-     */
-    rec.mtt = MjdEpoch(mjday, dso::FractionalSeconds(secday));
-  }
-
-  /* read quaternions first */
-  for (int q = 0; q < NumQuaternions; q++) {
-    double data[4];
-    for (int i = 0; i < 4; i++) {
-      auto res =
-          std::from_chars(attitude_details::skipws(str), line + sz, data[i]);
-      if (res.ec != std::errc{})
-        ++error;
-      str = res.ptr;
-    }
-    if constexpr (NumQuaternions == 1) {
-      rec.mq = Eigen::Quaterniond(data[0], data[1], data[2], data[3]);
-    } else {
-      rec.mq[q] = Eigen::Quaterniond(data[0], data[1], data[2], data[3]);
-    }
-  }
-
-  /* read angles */
-  if constexpr (NumAngles > 0) {
-    for (int a = 0; a < NumAngles; a++) {
-      auto res =
-          std::from_chars(attitude_details::skipws(str), line + sz, rec.ma[a]);
-      if (res.ec != std::errc{})
-        ++error;
-      str = res.ptr;
-    }
-  }
-
-  return error;
-}
-
-namespace satellite_details {
-/* This is an empty (base) class to assist inheritance. */
-class DsoAttitudeStreamBase {
-public:
-  virtual int angles_at(const MjdEpoch &tt, Eigen::Quaterniond *quaternions,
-                        double *angles) noexcept = 0;
-  virtual ~DsoAttitudeStreamBase() noexcept {};
-};
-} /* namespace satellite_details */
-
-template <int BufferSize, int NumQuaternions, int NumAngles>
-class DsoQuaternionStream : public satellite_details::DsoAttitudeStreamBase {
+template <int BufferSize> class DsoAttitudeStream {
 private:
-  using BufferEntryType = DsoQuaternionRecord<NumQuaternions, NumAngles>;
-  using BufferType = std::array<BufferEntryType, BufferSize + 1>;
-
   /** The (input) stream; opens at construction. */
   std::ifstream mstream;
   /** Current index in mbuf. */
   int cj;
-  /** A buffer holding DsoQuaternionRecord's. */
-  BufferType mbuf;
+  /** A buffer holding MeasuredAttitudeData's. */
+  std::array<attitude_details::MeasuredAttitudeData, BufferSize> mbuf;
 
-  using SlerpReturnType =
-      std::conditional<(NumQuaternions > 1),
-                       std::array<Eigen::Quaterniond, NumQuaternions>,
-                       Eigen::Quaterniond>;
-
-  SlerpReturnType qslerp(const MjdEpoch &tt) const noexcept {
+  /** @brief Interpolate the quaternions stored in mbuf[cj] and mbuf[cj+1].
+   *
+   * This function will use the quaternions stored in mbuf[cj] and mbuf[cj+1] to
+   * interpolate quaternion values for the epoch tt. Note that the epoch should
+   * be between mbuf[cj] and mbuf[cj+1], i.e. mbuf[cj].mtt <= tt < mbuf[cj+1]
+   * but this is not checked here!
+   *
+   * The interpolation is performed using the SLERP algorithm. The number of
+   * different quaternion (pairs) to be interpolated are found by the passed
+   * in attitude_details::MeasuredAttitudeData instance (i.e. att.mnq).
+   *
+   * The computed quaternions are store in the att instance.attitude_details
+   *
+   * @param[in] tt Epoch of interpolation request, TT.
+   * @param[in] att A attitude_details::MeasuredAttitudeData instance. The
+   * number of quaternions stored in here (i.e. att.mnq) is the number of
+   * quaternions we are going to interpolate. Hence, att.mnq should be <= to the
+   * attitude_details::MeasuredAttitudeData instances hold in buffer. Most
+   * probably, the equality should hold. At output, the epoch of the instance
+   * will be set to tt, and the stored quaternion will hold the computed values.
+   * @return Always zero.
+   */
+  int qslerp(const MjdEpoch &tt,
+             attitude_details::MeasuredAttitudeData &att) const noexcept {
+#ifdef DEBUG
+    assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
+#endif
     /* t2 - t1 in seconds */
     const double interval_sec =
         mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
@@ -208,25 +170,40 @@ private:
     /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
     const double f = part_sec / interval_sec;
     /* slerp interpolation */
-    if constexpr (NumQuaternions > 1) {
-      std::array<Eigen::Quaterniond, NumQuaternions> arr;
-      auto it0 = mbuf[cj].mq.cbegin();
-      auto it1 = mbuf[cj + 1].mq.cbegin();
-      for (int i = 0; i < NumQuaternions; i++) {
-        arr[i] = it0->slerp(f, *it1);
-        ++it0;
-        ++it1;
-      }
-      return arr;
-    } else {
-      return mbuf[cj].mq.slerp(f, mbuf[cj + 1].mq);
+    for (int q = 0; q < att.mnq; q++) {
+      arr[q] = mbf[cj].mqs[q]->slerp(f, mbf[cj + 1].mqs[q]);
     }
+
+    return 0;
   }
 
-  using AngleInterpolationReturnType =
-      std::conditional<(NumAngles > 1), std::array<double, NumAngles>, double>;
-
-  AngleInterpolationReturnType aintrpl(const MjdEpoch &tt) const noexcept {
+  /** @brief Interpolate the angles stored in mbuf[cj] and mbuf[cj+1].
+   *
+   * This function will use the angles stored in mbuf[cj] and mbuf[cj+1] to
+   * interpolate values for the epoch tt. Note that the epoch should
+   * be between mbuf[cj] and mbuf[cj+1], i.e. mbuf[cj].mtt <= tt < mbuf[cj+1]
+   * but this is not checked here!
+   *
+   * The interpolation is performed using a linear interpolation algorithm. The
+   * number of different angles (pairs) to be interpolated are found by the
+   * passed in attitude_details::MeasuredAttitudeData instance (i.e. att.mna).
+   *
+   * The computed angles are stored in the att instance.attitude_details
+   *
+   * @param[in] tt Epoch of interpolation request, TT.
+   * @param[in] att A attitude_details::MeasuredAttitudeData instance. The
+   * number of angles stored in here (i.e. att.mna) is the number of
+   * angles we are going to interpolate. Hence, att.mna should be <= to the
+   * attitude_details::MeasuredAttitudeData instances hold in buffer. Most
+   * probably, the equality should hold. At output, the epoch of the instance
+   * will be set to tt, and the stored angles will hold the computed values.
+   * @return Always zero.
+   */
+  int aintrpl(const MjdEpoch &tt,
+              attitude_details::MeasuredAttitudeData &att) const noexcept {
+#ifdef DEBUG
+    assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
+#endif
     /* t2 - t1 in seconds */
     const double interval_sec =
         mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
@@ -237,58 +214,26 @@ private:
     /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
     const double f = part_sec / interval_sec;
     /* linear interpolation */
-    if constexpr (NumAngles > 1) {
-      std::array<double, NumAngles> arr;
-      auto it0 = mbuf[cj].ma.cbegin();
-      auto it1 = mbuf[cj + 1].ma.cbegin();
-      for (int i = 0; i < NumAngles; i++) {
-        arr[i] = (it0->ma + f * (it1->ma - it0->ma));
-        ++it0;
-        ++it1;
-      }
-      return arr;
-    } else {
-      return mbuf[cj].ma + f * (mbuf[cj + 1].ma - mbuf[cj].ma);
+    for (int a = 0; a < att.mna; a++) {
+      att.mas[a] =
+          mbuf[cj].mas[a] + f * (mbuf[cj].mas[a] - mbuf[cj + 1].mas[a]);
     }
+    return 0;
   }
-
-  // enum class BufferSearchResult : char {
-  //   BeforeFirstRecord,
-  //   AfterLastRecord,
-  //   RangeInBuffer
-  // }; /* BufferSearchResult */
-
-  //[[deprecated]]
-  // BufferSearchResult range_in_buffer(const MjdEpoch &t, int &idx) noexcept {
-  //  auto it =
-  //      std::lower_bound(mbuf.begin(), mbuf.end() - 1, t,
-  //                       [](const MjdEpoch &tt, const BufferEntryType &be) {
-  //                         return tt < be.mtt;
-  //                       });
-  //  if (it == mbuf.begin()) {
-  //    return BufferSearchResult::BeforeFirstRecord;
-  //  } else if (it == mbuf.end() - 1) {
-  //    return BufferSearchResult::AfterLastRecord;
-  //  } else [[likely]] {
-  //    idx = std::distance(mbuf.begin(), it) - 1;
-  //  }
-  //  return BufferSearchResult::RangeInBuffer;
-  //}
 
   /** @brief Read and parse the next line of the (member) stream.
    * The resolved instance will be stored in mbuf[idx].
    *
    * @param[in] idx The index of the instance in mbuf which will hold the
    *                instance resolved. E.g. parse_next_record(4), will read
-   *                the next line off from the stream, resolve it a
-   *                DsoQuaternionRecord<NumQuaternions, NumAngles>, and assign
+   *                the next line off from the stream, resolve it to a
+   *                attitude_details::MeasuredAttitudeData, and assign
    *                this to mbuf[4].
    *  @return Anything other than zero denotes an error.
    */
   int parse_next_record(int idx) noexcept {
     char line[attitude_details::MAX_ATTITUDE_LINE_CHARS];
-    mstream.getline(line, attitude_details::MAX_ATTITUDE_LINE_CHARS);
-    if (mstream.good()) {
+    if (mstream.getline(line, attitude_details::MAX_ATTITUDE_LINE_CHARS)) {
       return parse_attitude_line<NumQuaternions, NumAngles>(line, mbuf[idx]);
     }
     fprintf(
@@ -313,16 +258,12 @@ private:
               __func__);
       return 100;
     }
-    char line[attitude_details::MAX_ATTITUDE_LINE_CHARS];
     int i = 0, error = 0;
     while (i < BufferSize && (!error)) {
       /* parse record and store at index i */
       error = parse_next_record(i);
       ++i;
     }
-    mbuf[BufferSize] = mbuf[BufferSize - 1];
-    /* set last buffer element */
-    mbuf[BufferSize].mtt = MjdEpoch::min();
 
     if (error) {
       fprintf(stderr,
@@ -332,28 +273,54 @@ private:
     return error;
   }
 
-  /** @brief Fill the buffer with BufferSize-1 new quaternions from stream.
+  /** @brief Fill the buffer with n new records from stream.
    *
-   * The last quaternion currently buffered (i.e. the one residing in index
-   * BufferSize-1) will be placed first at the buffer. Then, we are collecting
-   * BufferSize-1 new quaternions to fill the index range
-   * [Buffersize+1, BufferSize).
+   * Read and collect the next n records off from the stream and store them in
+   * the instance's buffer. For these new records to be stored, the recods
+   * already in the buffer are "left-shifted" by the right amount. The n new
+   * records read will be placed at the rightmost indexes of the buffer.
    *
-   * The current index, i.e. cj, is set to 0.
+   * The current index, i.e. cj, is set to BufferSize - n - 1, i.e. just before
+   * the first new record.
    *
+   * @param[n] Number of new records to read from the store and store. The
+   * following must hold: 0 < n <= BufferSize.
    * @return Anything other than zero denotes an error.
    */
-  int collect_new_batch() noexcept {
-    mbuf[0] = mbuf[BufferSize - 1];
-    int i = 0, error = 0;
-    while ((i < BufferSize - 1) && (!error)) {
-      error = parse_next_record(i + 1);
+  int collect_new_batch(int n = BufferSize - 1) noexcept {
+#ifdef DEBUG
+    assert(n > 0 && n <= BufferSize);
+#endif
+    /* left shift */
+    if (n < BufferSize / 2 - 1) {
+      /* non-overlapping */
+      std::memcpy(mbuf, mbuf + BufferSize - n,
+                  sizeof(attitude_details::MeasuredAttitudeData) * n);
+    } else {
+      /* overlapping */
+      std::memmove(mbuf, mbuf + BufferSize - n,
+                   sizeof(attitude_details::MeasuredAttitudeData) * n);
+    }
+    int i = BufferSize - n;
+    int error = 0;
+    while ((i < BufferSize) && (!error)) {
+      error = parse_next_record(i);
       ++i;
     }
-    cj = 0;
+    cj = BufferSize - n - 1;
     return (!error);
   }
 
+  /** @brief Read data off from the stream untill we reach (and pass) t.
+   *
+   * The function will keep on reading and collecting new data off from the
+   * stream, untill the instance's buffer holds an interval for which
+   * buffer[j].mtt <= t < buffer[j+1].mtt; i.e. the epoch is availble within
+   * the buffer (e.g. for interpolation).
+   *
+   * @param[in] t The epoch of request in TT.
+   * @return Anything other than 0, denotes an error (could also be EOF).
+   */
   int collect_range(const MjdEpoch &t) noexcept {
     if (mbuf[0].mtt < t) {
       fprintf(
@@ -365,23 +332,40 @@ private:
 
     int error = 0;
     while (!error) {
-      auto it =
-          std::lower_bound(mbuf.start(), mbuf.start() + BufferSize - 1,
-                           [](const MjdEpoch &tt, const BufferEntryType &bt) {
-                             return tt < bt.mtt;
-                           });
+      /* check if we already have the epoch before the last element */
+      auto it = std::lower_bound(
+          mbuf.start() + cj, mbuf.start() + BufferSize - 1,
+          [](const MjdEpoch &tt,
+             const attitude_details::MeasuredAttitudeData &bt) {
+            return tt < bt.mtt;
+          });
       if (it < mbuf.start() + BufferSize - 1) {
+        /* ok, got it! */
         cj = std::distance(mbuf.start() + it - 1);
         break;
       } else {
-        error = collect_new_batch();
+        /* nope, go further in the stream */
+        error = collect_new_batch(2 * BufferSize / 3);
       }
     }
 
     return error;
   }
 
+  /** @brief Place the instance's index cj at an interval for which:
+   * buf[cj].t<=t<buf[cj+1].t
+   *
+   * If needed, the function may use the stream to load new data to the buffer.
+   * At success, on function output, cj will be conviniently placed such that:
+   * buf[cj].t<=t<buf[cj+1].t
+   *
+   * @param[in] t The epoch of request in TT.
+   * @return Anything other than 0, denotes an error (could also be EOF).
+   */
   int hunt(const MjdEpoch &t) noexcept {
+#ifdef DEBUG
+    assert(cj < BufferSize - 1);
+#endif
     /* quick return */
     if ((t >= mbuf[cj].mtt) && (t < mbuf[cj + 1].mtt))
       return 0;
@@ -389,21 +373,23 @@ private:
     /* no quick return; search the buffer from this point forward */
     auto it =
         std::lower_bound(mbuf.start() + cj, mbuf.start() + BufferSize - 1,
-                         [](const MjdEpoch &tt, const BufferEntryType &bt) {
+                         [](const MjdEpoch &tt,
+                            const attitude_details::MeasuredAttitudeData &bt) {
                            return tt < bt.mtt;
                          });
     if (it < mbuf.start() + BufferSize - 1) {
+      /* got it, place the index and return */
       cj = std::distance(it, mbuf.start()) - 1;
       return 0;
     }
 
     /* shit, interval not buffered; two possiblities:
-     * a) either t > latest_buffered_quaternion, or
+     * a) either t >= latest_buffered_quaternion, or
      * b) t < current_quaternion
      */
     if (t >= mbuf[BufferSize - 1].mtt) {
       /* case A above; collect newer quaternions */
-      if (collect_new_batch()) {
+      if (collect_new_batch(2 * BufferSize / 3)) {
         return 2;
       }
       /* quick return if we have the right interval, else hunt */
@@ -418,44 +404,68 @@ private:
         return 30;
       }
       /* search for interval from the top of the buffer */
-      it = std::lower_bound(mbuf.start(), mbuf.start() + cj + 1,
-                            [](const MjdEpoch &tt, const BufferEntryType &bt) {
-                              return tt < bt.mtt;
-                            });
+      it = std::lower_bound(
+          mbuf.start(), mbuf.start() + cj + 1,
+          [](const MjdEpoch &tt,
+             const attitude_details::MeasuredAttitudeData &bt) {
+            return tt < bt.mtt;
+          });
       assert(it < mbuf.start() + cj + 1);
       cj = std::distance(it, mbuf.start()) - 1;
       return 0;
     }
+
+    /* should never reach this point! */
     return 80;
   }
 
 public:
-  DsoQuaternionStream(const char *fn) : mstream(fn), mbuf() {
+  DsoAttitudeStream(const char *fn, int numq, int numa,
+                    const MjdEpoch &t = MjdEpoch::min())
+      : mstream(fn), cj(-1) {
+    /* fill the buffer with empty instances */
+    std::generate(mbuf.begin(), mbuf.end(), [numq, numa]() {
+      return attitude_details::MeasuredAttitudeData(numq, numa);
+    });
+    /* initialize first BufferSize instances from stream */
     if (initialize()) {
       throw std::runtime_error(
           "[ERROR] Failed to initialize quternion stream from file " +
           std::string(fn) + std::string("\n"));
     }
-  };
-  DsoQuaternionStream(const char *fn, const MjdEpoch &t) : mstream(fn), mbuf() {
-    int error = initialize();
-    if (error || collect_range(t)) {
-      throw std::runtime_error(
-          "[ERROR] Failed to initialize quternion stream from file " +
-          std::string(fn) + std::string("\n"));
+    /* if a date is passed in, collect the required data for the epoch */
+    if (t != MjdEpoch::min()) {
+      if (collect_range(t)) {
+        throw std::runtime_error(
+            "[ERROR] Failed to initialize quternion stream from file " +
+            std::string(fn) + "for given epoch\n");
+      }
     }
-  };
-  DsoQuaternionStream(const DsoQuaternionStream &other) = delete;
-  DsoQuaternionStream &operator=(const DsoQuaternionStream &other) = delete;
-  DsoQuaternionStream(DsoQuaternionStream &&other) noexcept
-      : mstream(std::move(other.mstream)), mbuf(std::move(other.mbuf)) {}
-  DsoQuaternionStream &operator=(DsoQuaternionStream &&other) noexcept {
+  }
+
+  /** @brief No copy constructor. */
+  DsoAttitudeStream(const DsoAttitudeStream &other) = delete;
+  /** @brief No assignment operator. */
+  DsoAttitudeStream &operator=(const DsoAttitudeStream &other) = delete;
+  /** @brief Move constructor. */
+  DsoAttitudeStream(DsoAttitudeStream &&other) noexcept
+      : mstream(std::move(other.mstream)), cj(other.cj),
+        mbuf(std::move(other.mbuf)) {}
+  /** @brief Move assignment operator. */
+  DsoAttitudeStream &operator=(DsoAttitudeStream &&other) noexcept {
     mstream = std::move(other.mstream);
+    cj = other.cj;
     mbuf = std::move(other.mbuf);
     return *this;
   }
-  int angles_at(const MjdEpoch &tt, Eigen::Quaterniond *quaternions,
-                double *angles) noexcept {
+
+  /** @brief Get the (measured) attitude at a given epoch from the stream.
+   *
+   * @param[in] tt The epoch of request, in TT.
+   * @return Anything other than 0 denotes an error.
+   */
+  int attitude_at(const MjdEpoch &tt,
+                  attitude_details::MeasuredAttitudeData &att) noexcept {
     /* lets get at the right interval (in buffer) */
     if (this->hunt(tt)) {
       char buf[64];
@@ -464,31 +474,19 @@ public:
               "(traceback: %s)\n",
               to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(tt, buf),
               __func__);
+      return 1;
     }
 
     /* interpolate quaternion(s) */
-    const auto qs = this->qslerp(tt);
-    if constexpr (NumQuaternions > 1)
-      for (int i = 0; i < NumQuaternions; i++)
-        quaternions[i] = qs[i];
-    else
-      *quaternions = qs;
+    this->qslerp(tt, att);
 
     /* interpolate angle(s) */
-    if constexpr (NumAngles == 0) {
-      ;
-    } else if constexpr (NumAngles == 1) {
-      *angles = this->aintrpl(tt);
-    } else {
-      auto as = this->aintrpl(tt);
-      for (int i = 0; i < NumAngles; i++)
-        angles[i] = as[i];
-    }
+    this->aintrpl(tt, att);
 
     return 0;
   }
 
-}; /* DsoQuaternionStream */
+}; /* DsoAttitudeStream */
 
 } /* namespace dso */
 

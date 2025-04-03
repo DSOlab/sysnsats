@@ -6,6 +6,14 @@
 #include <array>
 
 namespace dso {
+
+template <> struct SatelliteAttitudeTraits<SATELLITE::JASON2> {
+  /** Number of quaternions in measured attitude files. */
+  static constexpr int NumQuaternions = 1;
+  /** Number of angles in measured attitude files. */
+  static constexpr int NumAngles = 2;
+}; /*SatelliteAttitudeTraits<SATELLITE::JASON1>*/
+
 template <>
 struct SatelliteMacromodel<SATELLITE::JASON2>
     : public satellite_details::BaseMacromodel {
