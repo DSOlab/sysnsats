@@ -1,9 +1,8 @@
 #ifndef __DSO_SENTINEL3B_MACROMODEL_HPP__
 #define __DSO_SENTINEL3B_MACROMODEL_HPP__
 
-#include "core/macromodel_surface_element.hpp"
-#include "satellites/satellites_core.hpp"
-#include <array>
+#include "satellites/macromodel.hpp"
+#include <vector>
 
 namespace dso {
 
@@ -14,9 +13,7 @@ template <> struct SatelliteAttitudeTraits<SATELLITE::SENTINEL3B> {
   static constexpr int NumAngles = 0;
 }; /*SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>*/
 
-template <>
-struct SatelliteMacromodel<SATELLITE::SENTINEL3B>
-    : public satellite_details::BaseMacromodel {
+template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> {
 
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {
       {{1.95e0, 1e0, 0e0, 0e0, 0.079e0, 0.906e0, 0.015e0, 0.079e0, 0.847e0,

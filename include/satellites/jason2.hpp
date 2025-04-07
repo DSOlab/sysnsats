@@ -1,9 +1,8 @@
 #ifndef __DSO_JASON2_MACROMODEL_HPP__
 #define __DSO_JASON2_MACROMODEL_HPP__
 
-#include "core/macromodel_surface_element.hpp"
-#include "satellites/satellites_core.hpp"
-#include <array>
+#include "satellites/macromodel.hpp"
+#include <vector>
 
 namespace dso {
 
@@ -14,9 +13,7 @@ template <> struct SatelliteAttitudeTraits<SATELLITE::JASON2> {
   static constexpr int NumAngles = 2;
 }; /*SatelliteAttitudeTraits<SATELLITE::JASON1>*/
 
-template <>
-struct SatelliteMacromodel<SATELLITE::JASON2>
-    : public satellite_details::BaseMacromodel {
+template <> struct SatelliteMacromodelTraits<SATELLITE::JASON2> {
 
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {
       {{0.783e0, -1e0, 0e0, 0e0, 0.3410e0, 0.6460e0, 0.0130e0, 0.0000e0,

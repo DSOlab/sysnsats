@@ -21,9 +21,7 @@
  *
  */
 
-#include "core/macromodel_surface_element.hpp"
-#include "satellites/satellites_core.hpp"
-#include <array>
+#include "satellites/macromodel.hpp"
 #include <vector>
 
 namespace dso {
@@ -33,11 +31,9 @@ template <> struct SatelliteAttitudeTraits<SATELLITE::JASON1> {
   static constexpr int NumQuaternions = 1;
   /** Number of angles in measured attitude files. */
   static constexpr int NumAngles = 2;
-}; /*SatelliteAttitudeTraits<SATELLITE::JASON1>*/
+}; /* SatelliteAttitudeTraits<SATELLITE::JASON1> */
 
-template <>
-struct SatelliteMacromodel<SATELLITE::JASON1>
-    : public satellite_details::BaseMacromodel {
+template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {
       {{1.65e0, 1e0, 0e0, 0e0, 0.0938e0, 0.2811e0, 0.2078e0, 0.4250e0, 0.1780e0,
         -.0260},
@@ -56,33 +52,6 @@ struct SatelliteMacromodel<SATELLITE::JASON1>
         0.8030e0},
        {9.8e0, -1e0, 0e0, 0e0, 0.0040e0, 0.2980e0, 0.6970e0, 0.0350e0, 0.0350e0,
         0.9310e0}}};
-
-  std::vector<MacromodelSurfaceElement>
-  rotate_macromodel(Eigen::Quaterniond &qbody,
-                    const double *thetas) const noexcept {
-    std::vector<MacromodelSurfaceElement> rotated;
-    rotated.reserve(model.size());
-    /* iterator to model (every plate) */
-    auto it = model.cbegin();
-
-    /* body frame */
-    for (int i = 0; i < num_plates(); i++) {
-      rotated.emplace_back(*it);
-      rotated[i].normal() = qbody * it->normal();
-      ++it;
-    }
-
-    /* solar array */
-    for (int i = 0; i < num_solar_arrays(); i++) {
-      rotated.emplace_back(*it);
-      rotated[num_plates() + i].normal() =
-          qbody * (Eigen::AngleAxisd(thetas[i], Eigen::Vector3d::UnitY()) *
-                   it->normal());
-      ++it;
-    }
-
-    return rotated;
-  }
 
   /* number of body-frame plates in macromodel */
   static constexpr int num_plates() { return 6; }
