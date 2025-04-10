@@ -30,6 +30,7 @@ struct MacromodelSurfaceElement {
   Eigen::Map<Eigen::Vector3d> normal() {
     return Eigen::Map<Eigen::Vector3d>(mpool + 1);
   }
+
   double area() const noexcept { return mpool[0]; }
   double &area() noexcept { return mpool[0]; }
   double spec_optical() const noexcept { return mpool[0 + 4]; }
@@ -45,33 +46,6 @@ struct MacromodelSurfaceElement {
   double abs_infrared() const noexcept { return mpool[2 + 7]; }
   double &abs_infrared() noexcept { return mpool[2 + 7]; }
 }; /* class MacromodelSurfaceElement */
-
-std::vector<MacromodelSurfaceElement>
-rotate_macromodel(Eigen::Quaterniond &qbody,
-                  const double *thetas) const noexcept {
-  std::vector<MacromodelSurfaceElement> rotated;
-  rotated.reserve(model.size());
-  /* iterator to model (every plate) */
-  auto it = model.cbegin();
-
-  /* body frame */
-  for (int i = 0; i < num_plates(); i++) {
-    rotated.emplace_back(*it);
-    rotated[i].normal() = qbody * it->normal();
-    ++it;
-  }
-
-  /* solar array */
-  for (int i = 0; i < num_solar_arrays(); i++) {
-    rotated.emplace_back(*it);
-    rotated[num_plates() + i].normal() =
-        qbody *
-        (Eigen::AngleAxisd(thetas[i], Eigen::Vector3d::UnitY()) * it->normal());
-    ++it;
-  }
-
-  return rotated;
-}
 
 } /* namespace dso */
 

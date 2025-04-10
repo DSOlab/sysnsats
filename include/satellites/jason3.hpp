@@ -56,6 +56,48 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
     p << 1.0023e0, 0.0000e0, -0.0021e0;
     return p;
   }
+
+  std::vector<MacromodelSurfaceElement>
+  rotate_macromodel(Eigen::Quaterniond &qbody,
+                    const double *thetas) const noexcept {
+
+    /* resulting rotated macromodel (add one solar array) */
+    std::vector<MacromodelSurfaceElement> rotated;
+    rotated.reserve(model.size() + 2);
+
+    /* iterator to model (every plate) */
+    auto it = model.cbegin();
+
+    /* body frame */
+    for (int i = 0; i < num_plates(); i++) {
+      rotated.emplace_back(*it);
+      /* apply rotation via quaternion */
+      rotated[i].normal() = qbody * it->normal();
+      ++it;
+    }
+
+    /* left solar array, 2 surfaces, rotate around y-axis with theta[0] */
+    for (int i = 0; i < num_solar_arrays(); i++) {
+      rotated.emplace_back(*it);
+      rotated[num_plates() + i].normal() =
+          qbody * (Eigen::AngleAxisd(thetas[0], Eigen::Vector3d::UnitY()) *
+                   it->normal());
+      ++it;
+    }
+
+    /* right solar array, 2 surfaces, rotate around y-axis with theta[1] */
+    it -= num_solar_arrays();
+    for (int i = 0; i < num_solar_arrays(); i++) {
+      rotated.emplace_back(*it);
+      rotated[num_plates() + num_solar_arrays() + i].normal() =
+          qbody * (Eigen::AngleAxisd(thetas[1], Eigen::Vector3d::UnitY()) *
+                   it->normal());
+      ++it;
+    }
+
+    return rotated;
+  }
+
 }; /* MacroModel<SATELLITE::Jason3> */
 
 } /* namespace dso */
