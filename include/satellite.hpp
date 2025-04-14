@@ -7,5 +7,6 @@
 #include "satellites/jason3.hpp"
 #include "satellites/sentinel3a.hpp"
 #include "satellites/sentinel3b.hpp"
+#include "satellites/sentinel6a.hpp"
 
 #endif

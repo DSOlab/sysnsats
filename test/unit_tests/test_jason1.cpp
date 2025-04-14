@@ -12,8 +12,6 @@ int main()
 
   static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::initial_mass() == 489.1);
 
-  static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::num_plates() == 6);
-
   static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::num_solar_arrays() == 2);
 
   auto dr1 = SatelliteMacromodelTraits<SATELLITE::JASON1>::doris_s1_pco();

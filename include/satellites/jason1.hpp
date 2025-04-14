@@ -24,7 +24,7 @@
  * rotate the macromodel though, we get two.
  */
 
-#include "satellites/macromodel.hpp"
+#include "satellites/macromodel_core.hpp"
 #include <vector>
 
 namespace dso {
@@ -100,7 +100,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
    * system. Here, we are rotating these normal vectors to another ref. frame,
    * given the rotation angles/quaternions.
    *
-   * For the case of Jason-3 (as in all Jason satellite series), we need one
+   * For the case of Jason-1 (as in all Jason satellite series), we need one
    * quaternion, to rotate all (normal vectors of the) body frame surfaces and
    * two angles (w.r.t the body-frame y-axis) to rotate the left and the right
    * solar arrays. Note that the macromodel only contains info for one solar
@@ -127,13 +127,14 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
    * [rad]. First, i.e. thetas[0] is the angle for the left panel, and thetas[1]
    * is the angle for the right panel. For e.g. the left panel, the rotation is:
    * n = q * (Ry(theta) * n_bf)
+   * @param[in] satsun Not used
    * @return A vector of MacromodelSurfaceElement's. Its size should equal:
    * num_body_frame_surfaces() + num_solar_array_surfaces() * num_solar_arrays()
    *
    */
-  std::vector<MacromodelSurfaceElement>
-  rotate_macromodel(const Eigen::Quaterniond *qbody,
-                    const double *thetas) const noexcept {
+  std::vector<MacromodelSurfaceElement> rotate_macromodel(
+      const Eigen::Quaterniond *qbody, const double *thetas,
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) const noexcept {
 
     /* resulting rotated macromodel (add one solar array) */
     std::vector<MacromodelSurfaceElement> rotated;
@@ -147,7 +148,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
     for (int i = 0; i < num_body_frame_surfaces(); i++) {
       rotated.emplace_back(*it);
       /* apply rotation via quaternion */
-      rotated[i].normal() = qbody * it->normal();
+      rotated[i].normal() = (*qbody) * it->normal();
       ++it;
     }
 
@@ -155,8 +156,8 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
     for (int i = 0; i < num_solar_array_surfaces(); i++) {
       rotated.emplace_back(*it);
       rotated[num_body_frame_surfaces() + i].normal() =
-          qbody * (Eigen::AngleAxisd(thetas[0], Eigen::Vector3d::UnitY()) *
-                   it->normal());
+          (*qbody) * (Eigen::AngleAxisd(thetas[0], Eigen::Vector3d::UnitY()) *
+                      it->normal());
       ++it;
     }
 
@@ -166,8 +167,8 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
       rotated.emplace_back(*it);
       rotated[num_body_frame_surfaces() + num_solar_array_surfaces() + i]
           .normal() =
-          qbody * (Eigen::AngleAxisd(thetas[1], Eigen::Vector3d::UnitY()) *
-                   it->normal());
+          (*qbody) * (Eigen::AngleAxisd(thetas[1], Eigen::Vector3d::UnitY()) *
+                      it->normal());
       ++it;
     }
 

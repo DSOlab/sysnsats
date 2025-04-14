@@ -12,7 +12,6 @@ int main()
 
   static_assert(SatelliteMacromodelTraits<SATELLITE::JASON3>::initial_mass() == 509.6e0);
 
-  static_assert(SatelliteMacromodelTraits<SATELLITE::JASON3>::num_plates() == 6);
 
   static_assert(SatelliteMacromodelTraits<SATELLITE::JASON3>::num_solar_arrays() == 2);
 
