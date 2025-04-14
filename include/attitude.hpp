@@ -36,9 +36,48 @@ public:
 }; /* SatelliteAttitude */
 
 /** @brief Measured attitude, i.e. a number of quaternions and/or angles. */
-class MeasuredAttitude final : SatelliteAttitude {
+class MeasuredAttitude final : public SatelliteAttitude {
+  using BType =
+      DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>;
   /** Measured attitude stream */
-  DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize> matt;
+  BType matt;
+
+  BType static factory(SATELLITE sat, const char *fn) {
+    switch (sat) {
+    case (SATELLITE::JASON1):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::JASON1>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::JASON1>::NumAngles);
+
+    case (SATELLITE::JASON2):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::JASON2>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::JASON2>::NumAngles);
+
+    case (SATELLITE::JASON3):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles);
+
+    case (SATELLITE::SENTINEL3A):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumAngles);
+
+    case (SATELLITE::SENTINEL3B):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumAngles);
+
+    case (SATELLITE::SENTINEL6A):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles);
+    default:
+      throw std::runtime_error(
+          "[ERROR] Failed to construct MeasuredAttitude\n");
+    }
+  }
 
 public:
   /** @brief Constructor.
@@ -47,42 +86,8 @@ public:
    * information from. These files are preprocessed by DSO and are expected to
    * have a certain format.
    */
-  MeasuredAttitude(SATELLITE sat, const char *fn) : SatelliteAttitude(sat) {
-    switch (sat) {
-    case (SATELLITE::JASON1):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::JASON1>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON1>::NumAngles);
-
-    case (SATELLITE::JASON2):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::JASON2>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON2>::NumAngles);
-
-    case (SATELLITE::JASON3):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles);
-
-    case (SATELLITE::SENTINEL3A):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumAngles);
-
-    case (SATELLITE::SENTINEL3B):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumAngles);
-
-    case (SATELLITE::SENTINEL6A):
-      matt = DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
-          fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles);
-    default:
-      throw std::runtime_error(
-          "[ERROR] Failed to construct MeasuredAttitude\n");
-    }
-  }
+  MeasuredAttitude(SATELLITE sat, const char *fn)
+      : SatelliteAttitude(sat), matt(MeasuredAttitude::factory(sat, fn)) {}
 
   int attitude_at(
       const MjdEpoch &t,

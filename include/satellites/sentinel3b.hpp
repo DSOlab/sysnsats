@@ -1,7 +1,7 @@
 #ifndef __DSO_SENTINEL3B_MACROMODEL_HPP__
 #define __DSO_SENTINEL3B_MACROMODEL_HPP__
 
-#include "satellites/macromodel.hpp"
+#include "satellites/macromodel_core.hpp"
 #include <vector>
 
 namespace dso {

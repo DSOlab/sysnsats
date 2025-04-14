@@ -1,4 +1,4 @@
-#include "attitude_stream.hpp"
+#include "attitude.hpp"
 #include <cstdio>
 
 int main(int argc, char *argv[]) {
@@ -7,17 +7,18 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  dso::Satellite sat(argv[1]);
+  /* pointer to base class */
+  dso::SatelliteAttitude *att;
 
-  if (sat.load_geometry()) {
-    fprintf(stderr, "ERROR. Failed loading geometry for sat %s\n", argv[1]);
-    return 10;
-  }
+  /* resolve satellite id */
+  dso::SATELLITE sat = dso::translate_satid(argv[1]);
 
-  if (sat.load_attitude(argv[2])) {
-    fprintf(stderr, "ERROR Failed loading attitude for satellite %s\n",
-            argv[1]);
-    return 20;
+  try {
+    /* get the measured attitude stream for the satellite */
+    att = new dso::MeasuredAttitude(sat, argv[2]);
+  } catch (std::exception &) {
+    fprintf(stderr, "ERROR failed to get measured attitude stream\n");
+    return 2;
   }
 
   return 0;

@@ -1,7 +1,7 @@
 #ifndef __DSO_JASON3_MACROMODEL_HPP__
 #define __DSO_JASON3_MACROMODEL_HPP__
 
-#include "satellites/macromodel.hpp"
+#include "satellites/macromodel_core.hpp"
 #include <vector>
 
 namespace dso {
@@ -32,24 +32,30 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
         0.0980e0, 0.8030e0},
        {9.800e0, -1e0, 0e0, 0e0, 0.0040e0, 0.2980e0, 0.6970e0, 0.0350e0,
         0.0350e0, 0.9310e0}}};
+
   /* number of body-frame plates in macromodel */
   static constexpr int num_plates() { return 6; }
+
   /* number of solar array plates in macromodel */
   static constexpr int num_solar_arrays() { return 2; }
+
   /* DORIS 2GHz (S1) Phase center in satellite reference frame in [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> doris_s1_pco() noexcept {
     Eigen::Matrix<double, 3, 1> p;
     p << 2.4128e0, -0.1325e0, 0.9235e0;
     return p;
   }
+
   /* DORIS 400MHz (U2) Phase center in satellite reference frame in [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> doris_u2_pco() noexcept {
     Eigen::Matrix<double, 3, 1> p;
     p << 2.4128e0, -0.1325e0, 0.7555e0;
     return p;
   }
+
   /* Initial value of mass in [kg] */
   static constexpr double initial_mass() { return 509.6e0; }
+
   /* Center of gravity coordinates in satellite reference frame [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> initial_cog() noexcept {
     Eigen::Matrix<double, 3, 1> p;

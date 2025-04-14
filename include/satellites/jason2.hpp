@@ -1,7 +1,30 @@
 #ifndef __DSO_JASON2_MACROMODEL_HPP__
 #define __DSO_JASON2_MACROMODEL_HPP__
 
-#include "satellites/macromodel.hpp"
+/* @file
+ *
+ * Jason-2 Macromodel according to:
+ * L. Cerri, A. Couhert, P. Ferrage, DORIS satellites models implemented in
+ * POE processing, available at:
+ * https://ids-doris.org/documents/BC/satellites/DORISSatelliteModels.pdf
+ * Version: Ed.Rev.Date 1.19.21/03/2025
+ *
+ * Jason-2 has two solar panels, which can rotate w.r.t the Y-axis (Bframe).
+ * The attitude is distributed by CNES via:
+ *  * A body-frame quaternion, and
+ *  * Left- and Right- panel rotation angles.
+ *
+ * Hence, to get e.g. the normal vector of each surface j from the body frame
+ * (B) to the inertial frame (I):
+ *  * j belongs to the body frame: n_I = q * n_B
+ *  * j is either of the panels: n_I = q * ( R2(theta) * n_B )
+ *    where theta is rotation angle for the left or right solar array.
+ *
+ * Note that the macromodel only has reference values for one panel; when we
+ * rotate the macromodel though, we get two.
+ */
+
+#include "satellites/macromodel_core.hpp"
 #include <vector>
 
 namespace dso {

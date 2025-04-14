@@ -40,14 +40,6 @@ SATELLITE translate_satid(const char *satid);
 /** @brief Empty struct to be specialized for each satellite attitude traits */
 template <SATELLITE S> struct SatelliteAttitudeTraits {};
 
-namespace satellite_details {
-/* empty base class to assist inheritance. */
-class BaseMacromodel {}; /* BaseMacromodel */
-} /* namespace satellite_details */
-
-template <SATELLITE S>
-class SatelliteMacromodel : public satellite_details::BaseMacromodel {};
-
 /** @brief Get satellite mass and CoG correction from a CNS mass file.
  *
  * These files are available at:

@@ -1,6 +1,7 @@
 #ifndef __DSO_ATTITUDE_QUATERNION_STREAM_HPP__
 #define __DSO_ATTITUDE_QUATERNION_STREAM_HPP__
 
+#include "core/measured_attitude_data.hpp"
 #include "datetime/calendar.hpp"
 #include "datetime/datetime_write.hpp"
 #include "eigen3/Eigen/Geometry"
@@ -12,100 +13,6 @@
 #include <stdexcept>
 
 namespace dso {
-
-namespace attitude_details {
-/** @brief Maximum characters in any dso-quaternion file line. */
-constexpr const int MAX_ATTITUDE_LINE_CHARS = 248;
-
-/** @brief Left trim whitespace and '+' characters. */
-inline const char *skipws(const char *line) noexcept {
-  const char *str = line;
-  while (*str && (*str == ' ' || *str == '+'))
-    ++str;
-  return str;
-}
-
-struct MeasuredAttitudeData {
-  /* epoch of measured attitude in TT */
-  MjdEpoch mtt;
-  /* number of quaternions stored */
-  int mnq;
-  /* array of quaternions */
-  Eigen::Quaterniond *mqs = nullptr;
-  /* number of angles stored */
-  int mna;
-  /* array of angles */
-  double *mas = nullptr;
-
-  /** @brief We will be using the fact that an Eigen::Quaterniond is 4 doubles.
-   */
-  static_assert(sizeof(Eigen::Quaterniond) == 4 * sizeof(double),
-                "Eigen::Quaterniond is not 4 doubles in size!");
-
-  /** @brief Constructor.
-   *
-   * @param[in] nq Number of quaternions.
-   * @param[in] na Number of angles.
-   * @param[in] t  (Optional) epoch of measured attitude, else min possible
-   * date.
-   */
-  MeasuredAttitudeData(int nq, int na,
-                       const MjdEpoch &t = MjdEpoch::min()) noexcept
-      : mtt(t), mnq(nq), mqs(mnq ? new Eigen::Quaterniond[mnq] : nullptr),
-        mna(na), mas(mna ? new double[mna] : nullptr) {}
-
-  /** @brief Destructor. */
-  ~MeasuredAttitudeData() noexcept {
-    if (mnq)
-      delete[] mqs;
-    if (mna)
-      delete[] mas;
-  }
-
-  /** @brief Copy Constructor. */
-  MeasuredAttitudeData(const MeasuredAttitudeData &other) noexcept
-      : mtt(other.mtt), mnq(other.mnq),
-        mqs(mnq ? new Eigen::Quaterniond[mnq] : nullptr), mna(other.mna),
-        mas(mna ? new double[mna] : nullptr) {
-    // for (int i = 0; i < mnq; i++)
-    //   mqs[i] = other.mqs[i];
-    std::memcpy(mqs, other.mqs, sizeof(double) * 4 * mnq);
-    std::memcpy(mas, other.mas, sizeof(double) * mna);
-  }
-
-  /** @brief Move constructor */
-  MeasuredAttitudeData(MeasuredAttitudeData &&other) noexcept
-      : mtt(other.mtt), mnq(other.mnq), mqs(other.mqs), mna(other.mna),
-        mas(other.mas) {
-    other.mnq = other.mna = 0;
-  }
-
-  /** @brief Assignment operator. */
-  MeasuredAttitudeData &operator=(const MeasuredAttitudeData &other) noexcept {
-    if (this != &other) {
-      mtt = other.mtt;
-      mnq = other.mnq;
-      mqs = mnq ? new Eigen::Quaterniond[mnq] : nullptr;
-      std::memcpy(mqs, other.mqs, sizeof(double) * 4 * mnq);
-      mna = other.mna;
-      mas = mna ? new double[mna] : nullptr;
-      std::memcpy(mas, other.mas, sizeof(double) * mna);
-    }
-    return *this;
-  }
-
-  /** @brief Move assignment operator. */
-  MeasuredAttitudeData &operator=(MeasuredAttitudeData &&other) noexcept {
-    mtt = other.mtt;
-    mnq = other.mnq;
-    mqs = other.mqs;
-    mna = other.mna;
-    mas = other.mas;
-    other.mnq = other.mna = 0;
-    return *this;
-  }
-}; /* struct MeasuredAttitudeData */
-} /* namespace attitude_details */
 
 /** @brief Parse a record line from a DSO quaternion file.
  *
@@ -120,9 +27,8 @@ struct MeasuredAttitudeData {
  * (if successeful), the first num_angles will hold the angles parsed.
  * @return Anything other than 0 denotes an error.
  */
-int parse_attitude_line(const char *line, int num_quaternions, int num_angles,
-                        MjdEpoch &tt, Eigen::Quaterniond *qout,
-                        double *aout) noexcept;
+int parse_attitude_line(const char *line,
+                        attitude_details::MeasuredAttitudeData &data) noexcept;
 
 template <int BufferSize> class DsoAttitudeStream {
 private:
@@ -161,17 +67,20 @@ private:
     assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
 #endif
     /* t2 - t1 in seconds */
-    const double interval_sec =
-        mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
-            mbuf[cj].mtt);
+    const auto interval_sec =
+        mbuf[cj + 1]
+            .t()
+            .template diff<DateTimeDifferenceType::FractionalSeconds>(
+                mbuf[cj].t());
     /* tt - t1 in seconds */
-    const double part_sec =
-        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].mtt);
+    const auto part_sec =
+        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].t());
     /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
-    const double f = part_sec / interval_sec;
-    /* slerp interpolation */
-    for (int q = 0; q < att.mnq; q++) {
-      arr[q] = mbf[cj].mqs[q]->slerp(f, mbf[cj + 1].mqs[q]);
+    const double f = part_sec.seconds() / interval_sec.seconds();
+    /* slerp interpolation; assign to att */
+    for (int q = 0; q < att.num_quaternions(); q++) {
+      att.quaternions()[q] =
+          mbuf[cj].quaternions()[q].slerp(f, mbuf[cj + 1].quaternions()[q]);
     }
 
     return 0;
@@ -205,18 +114,20 @@ private:
     assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
 #endif
     /* t2 - t1 in seconds */
-    const double interval_sec =
-        mbuf[cj + 1].mtt.diff<DateTimeDifferenceType::FractionalSeconds>(
-            mbuf[cj].mtt);
+    const auto interval_sec =
+        mbuf[cj + 1]
+            .t()
+            .template diff<DateTimeDifferenceType::FractionalSeconds>(
+                mbuf[cj].t());
     /* tt - t1 in seconds */
-    const double part_sec =
-        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].mtt);
+    const auto part_sec =
+        tt.diff<DateTimeDifferenceType::FractionalSeconds>(mbuf[cj].t());
     /* interpolation factor (0.0 gives q1, 1.0 gives q2) */
-    const double f = part_sec / interval_sec;
+    const double f = part_sec.seconds() / interval_sec.seconds();
     /* linear interpolation */
-    for (int a = 0; a < att.mna; a++) {
-      att.mas[a] =
-          mbuf[cj].mas[a] + f * (mbuf[cj].mas[a] - mbuf[cj + 1].mas[a]);
+    for (int a = 0; a < att.num_angles(); a++) {
+      att.angles()[a] = mbuf[cj].angles()[a] +
+                        f * (mbuf[cj].angles()[a] - mbuf[cj + 1].angles()[a]);
     }
     return 0;
   }
@@ -231,10 +142,11 @@ private:
    *                this to mbuf[4].
    *  @return Anything other than zero denotes an error.
    */
-  int parse_next_record(int idx) noexcept {
+  int parse_next_record(attitude_details::MeasuredAttitudeData &data) noexcept {
     char line[attitude_details::MAX_ATTITUDE_LINE_CHARS];
+
     if (mstream.getline(line, attitude_details::MAX_ATTITUDE_LINE_CHARS)) {
-      return parse_attitude_line<NumQuaternions, NumAngles>(line, mbuf[idx]);
+      return parse_attitude_line(line, data);
     }
     fprintf(
         stderr,
@@ -261,14 +173,14 @@ private:
     int i = 0, error = 0;
     while (i < BufferSize && (!error)) {
       /* parse record and store at index i */
-      error = parse_next_record(i);
+      error = parse_next_record(mbuf[i]);
       ++i;
     }
 
     if (error) {
       fprintf(stderr,
-              "[ERROR] Failed parsing quaternion line: %s (traceback: %s)\n",
-              line, __func__);
+              "[ERROR] Failed parsing quaternion line (traceback: %s)\n",
+              __func__);
     }
     return error;
   }
@@ -292,19 +204,22 @@ private:
     assert(n > 0 && n <= BufferSize);
 #endif
     /* left shift */
-    if (n < BufferSize / 2 - 1) {
-      /* non-overlapping */
-      std::memcpy(mbuf, mbuf + BufferSize - n,
-                  sizeof(attitude_details::MeasuredAttitudeData) * n);
-    } else {
-      /* overlapping */
-      std::memmove(mbuf, mbuf + BufferSize - n,
-                   sizeof(attitude_details::MeasuredAttitudeData) * n);
+    for (int i = 0; i < n; i++) {
+      mbuf[i] = std::move(mbuf[BufferSize - n + i]);
     }
+    // if (n < BufferSize / 2 - 1) {
+    //   /* non-overlapping */
+    //   std::memcpy(mbuf.data(), mbuf.data() + BufferSize - n,
+    //               sizeof(attitude_details::MeasuredAttitudeData) * n);
+    // } else {
+    //   /* overlapping */
+    //   std::memmove(mbuf.data(), mbuf.data() + BufferSize - n,
+    //                sizeof(attitude_details::MeasuredAttitudeData) * n);
+    // }
     int i = BufferSize - n;
     int error = 0;
     while ((i < BufferSize) && (!error)) {
-      error = parse_next_record(i);
+      error = parse_next_record(mbuf[i]);
       ++i;
     }
     cj = BufferSize - n - 1;
@@ -322,7 +237,7 @@ private:
    * @return Anything other than 0, denotes an error (could also be EOF).
    */
   int collect_range(const MjdEpoch &t) noexcept {
-    if (mbuf[0].mtt < t) {
+    if (mbuf[0].t() < t) {
       fprintf(
           stderr,
           "[ERROR] Cannot read quaternion stream backwards! (traceback: %s)\n",
@@ -333,15 +248,13 @@ private:
     int error = 0;
     while (!error) {
       /* check if we already have the epoch before the last element */
-      auto it = std::lower_bound(
-          mbuf.start() + cj, mbuf.start() + BufferSize - 1,
-          [](const MjdEpoch &tt,
-             const attitude_details::MeasuredAttitudeData &bt) {
-            return tt < bt.mtt;
-          });
-      if (it < mbuf.start() + BufferSize - 1) {
+      auto it =
+          std::lower_bound(mbuf.begin() + cj, mbuf.begin() + BufferSize - 1, t,
+                           [](const attitude_details::MeasuredAttitudeData &bt,
+                              const MjdEpoch &tval) { return bt.t() < tval; });
+      if (it < mbuf.begin() + BufferSize - 1) {
         /* ok, got it! */
-        cj = std::distance(mbuf.start() + it - 1);
+        cj = std::distance(mbuf.begin(), it) - 1;
         break;
       } else {
         /* nope, go further in the stream */
@@ -367,19 +280,17 @@ private:
     assert(cj < BufferSize - 1);
 #endif
     /* quick return */
-    if ((t >= mbuf[cj].mtt) && (t < mbuf[cj + 1].mtt))
+    if ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t()))
       return 0;
 
     /* no quick return; search the buffer from this point forward */
     auto it =
-        std::lower_bound(mbuf.start() + cj, mbuf.start() + BufferSize - 1,
-                         [](const MjdEpoch &tt,
-                            const attitude_details::MeasuredAttitudeData &bt) {
-                           return tt < bt.mtt;
-                         });
-    if (it < mbuf.start() + BufferSize - 1) {
+        std::lower_bound(mbuf.begin() + cj, mbuf.begin() + BufferSize - 1, t,
+                         [](const attitude_details::MeasuredAttitudeData &bt,
+                            const MjdEpoch &tval) { return bt.t() < tval; });
+    if (it < mbuf.begin() + BufferSize - 1) {
       /* got it, place the index and return */
-      cj = std::distance(it, mbuf.start()) - 1;
+      cj = std::distance(it, mbuf.begin()) - 1;
       return 0;
     }
 
@@ -387,16 +298,16 @@ private:
      * a) either t >= latest_buffered_quaternion, or
      * b) t < current_quaternion
      */
-    if (t >= mbuf[BufferSize - 1].mtt) {
+    if (t >= mbuf[BufferSize - 1].t()) {
       /* case A above; collect newer quaternions */
       if (collect_new_batch(2 * BufferSize / 3)) {
         return 2;
       }
       /* quick return if we have the right interval, else hunt */
-      return ((t >= mbuf[cj].mtt) && (t < mbuf[cj + 1].mtt)) ? 0 : hunt(t);
+      return ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t())) ? 0 : hunt(t);
     } else {
       /* case B above */
-      if (t <= mbuf[0].mtt) {
+      if (t <= mbuf[0].t()) {
         fprintf(stderr,
                 "[ERROR] Request for quaternion which is prior to current "
                 "buffered block! (traceback: %s)\n",
@@ -404,14 +315,11 @@ private:
         return 30;
       }
       /* search for interval from the top of the buffer */
-      it = std::lower_bound(
-          mbuf.start(), mbuf.start() + cj + 1,
-          [](const MjdEpoch &tt,
-             const attitude_details::MeasuredAttitudeData &bt) {
-            return tt < bt.mtt;
-          });
-      assert(it < mbuf.start() + cj + 1);
-      cj = std::distance(it, mbuf.start()) - 1;
+      it = std::lower_bound(mbuf.begin(), mbuf.begin() + cj + 1, t,
+                            [](const attitude_details::MeasuredAttitudeData &bt,
+                               const MjdEpoch &tval) { return bt.t() < tval; });
+      assert(it < mbuf.begin() + cj + 1);
+      cj = std::distance(it, mbuf.begin()) - 1;
       return 0;
     }
 
@@ -419,14 +327,32 @@ private:
     return 80;
   }
 
+  /** @brief Helper function to create mbuf.
+   *
+   * mbuf cannot be default initialized in the constructor, cause
+   * atiitude_details::MeasuredAttitudeData does not have a default constrctor.
+   * This function, helps construct such an array so that it can be used in the
+   * constructor body.
+   * It only serves this purpose and should not be used otherwise.
+   */
+  template <typename T, std::size_t... Is>
+  constexpr std::array<T, sizeof...(Is)>
+  make_array_impl(int q, int a, std::index_sequence<Is...>) {
+    return {{(static_cast<void>(Is), T(q, a))...}};
+  }
+
+  template <typename T, std::size_t N>
+  constexpr std::array<T, N> make_array(int q, int a) {
+    return make_array_impl<T>(q, a, std::make_index_sequence<N>{});
+  }
+
 public:
   DsoAttitudeStream(const char *fn, int numq, int numa,
                     const MjdEpoch &t = MjdEpoch::min())
-      : mstream(fn), cj(-1) {
-    /* fill the buffer with empty instances */
-    std::generate(mbuf.begin(), mbuf.end(), [numq, numa]() {
-      return attitude_details::MeasuredAttitudeData(numq, numa);
-    });
+      : mstream(fn), cj(-1),
+        mbuf(make_array<attitude_details::MeasuredAttitudeData, BufferSize>(
+            numq, numa)) {
+    // mbuf(DsoAttitudeStream::constructBuffer(numq, numa)) {
     /* initialize first BufferSize instances from stream */
     if (initialize()) {
       throw std::runtime_error(
