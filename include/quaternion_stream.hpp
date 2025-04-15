@@ -39,6 +39,22 @@ private:
   /** A buffer holding MeasuredAttitudeData's. */
   std::array<attitude_details::MeasuredAttitudeData, BufferSize> mbuf;
 
+#ifdef DEBUG
+  void debug_report(const MjdEpoch &tt) const noexcept {
+    char buf[64];
+    printf("DEBUG Report:\n Here is the buffer: ");
+    int i = 0;
+    for (const auto &d : mbuf) {
+      printf("Buffer[%2d] -> %s\n", i++,
+             to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(d.t(), buf));
+    }
+    printf("Epoch requested: %s\n",
+           to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(tt, buf));
+    printf("Index is:        %d\n", cj);
+    printf("DEBUG end of report\n");
+  }
+#endif
+
   /** @brief Interpolate the quaternions stored in mbuf[cj] and mbuf[cj+1].
    *
    * This function will use the quaternions stored in mbuf[cj] and mbuf[cj+1] to
@@ -64,7 +80,7 @@ private:
   int qslerp(const MjdEpoch &tt,
              attitude_details::MeasuredAttitudeData &att) const noexcept {
 #ifdef DEBUG
-    assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
+    assert(tt >= mbuf[cj].t() && tt < mbuf[cj + 1].t());
 #endif
     /* t2 - t1 in seconds */
     const auto interval_sec =
@@ -111,7 +127,7 @@ private:
   int aintrpl(const MjdEpoch &tt,
               attitude_details::MeasuredAttitudeData &att) const noexcept {
 #ifdef DEBUG
-    assert(tt >= mbuf[cj].mtt && tt < mbuf[cj + 1].mtt);
+    assert(tt >= mbuf[cj].t() && tt < mbuf[cj + 1].t());
 #endif
     /* t2 - t1 in seconds */
     const auto interval_sec =
@@ -160,6 +176,8 @@ private:
    * Read, parse and store the BufferSize records (i.e. lines) first
    * encountered in the current stream position. Store them the instance's
    * mbuf member var.
+   * If the buffer is filled (successefully), current index (i.e. cj) will be
+   * set to 0.
    *
    * @return Anything other than zero denotes an error.
    */
@@ -182,6 +200,8 @@ private:
               "[ERROR] Failed parsing quaternion line (traceback: %s)\n",
               __func__);
     }
+    /* set the current index to 0 */
+    cj = 0;
     return error;
   }
 
@@ -207,15 +227,6 @@ private:
     for (int i = 0; i < n; i++) {
       mbuf[i] = std::move(mbuf[BufferSize - n + i]);
     }
-    // if (n < BufferSize / 2 - 1) {
-    //   /* non-overlapping */
-    //   std::memcpy(mbuf.data(), mbuf.data() + BufferSize - n,
-    //               sizeof(attitude_details::MeasuredAttitudeData) * n);
-    // } else {
-    //   /* overlapping */
-    //   std::memmove(mbuf.data(), mbuf.data() + BufferSize - n,
-    //                sizeof(attitude_details::MeasuredAttitudeData) * n);
-    // }
     int i = BufferSize - n;
     int error = 0;
     while ((i < BufferSize) && (!error)) {
@@ -223,7 +234,10 @@ private:
       ++i;
     }
     cj = BufferSize - n - 1;
-    return (!error);
+#ifdef DEBUG
+    assert(cj >= 0 && cj < BufferSize - 1);
+#endif
+    return error;
   }
 
   /** @brief Read data off from the stream untill we reach (and pass) t.
@@ -277,53 +291,80 @@ private:
    */
   int hunt(const MjdEpoch &t) noexcept {
 #ifdef DEBUG
-    assert(cj < BufferSize - 1);
+    assert((cj >= 0) && (cj < BufferSize - 1));
 #endif
     /* quick return */
-    if ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t()))
-      return 0;
-
-    /* no quick return; search the buffer from this point forward */
-    auto it =
-        std::lower_bound(mbuf.begin() + cj, mbuf.begin() + BufferSize - 1, t,
-                         [](const attitude_details::MeasuredAttitudeData &bt,
-                            const MjdEpoch &tval) { return bt.t() < tval; });
-    if (it < mbuf.begin() + BufferSize - 1) {
-      /* got it, place the index and return */
-      cj = std::distance(it, mbuf.begin()) - 1;
+    if ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t())) {
       return 0;
     }
 
-    /* shit, interval not buffered; two possiblities:
-     * a) either t >= latest_buffered_quaternion, or
-     * b) t < current_quaternion
+    /* No quick return! If we are requesting a latter date than the current
+     * interval, there are two possibilities:
+     *
+     * a) the interval we are looking for exists latter in the current buffer;
+     *    in this case, we are searching the buffer from this point onwards...
      */
-    if (t >= mbuf[BufferSize - 1].t()) {
-      /* case A above; collect newer quaternions */
-      if (collect_new_batch(2 * BufferSize / 3)) {
-        return 2;
+    if (t >= mbuf[cj].t()) {
+      auto it =
+          std::lower_bound(mbuf.begin() + cj, mbuf.end(), t,
+                           [](const attitude_details::MeasuredAttitudeData &bt,
+                              const MjdEpoch &tval) { return bt.t() < tval; });
+      if (it != mbuf.end()) {
+        /* got it, place the index and return */
+        cj = std::distance(mbuf.begin(), it) - 1;
+        return 0;
+      } else {
+        /* b) the interval is not buffered; keep reading from the stream untill
+         *    we either buffer it or reach EOF
+         */
+        if (collect_new_batch(2 * BufferSize / 3)) {
+          fprintf(stderr,
+                  "[ERROR] Failed collecting new/next data from stream "
+                  "(traceback: %s)\n",
+                  __func__);
+          return 2;
+        }
+        /* return if we have the right interval, else hunt */
+#ifdef DEBUG
+        assert(cj < BufferSize - 1);
+#endif
+        return ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t())) ? 0 : hunt(t);
       }
-      /* quick return if we have the right interval, else hunt */
-      return ((t >= mbuf[cj].t()) && (t < mbuf[cj + 1].t())) ? 0 : hunt(t);
+      /* end block: requesting latter time */
     } else {
-      /* case B above */
-      if (t <= mbuf[0].t()) {
+
+      /* Ok, reached this pont, thus the interval is prior to the current
+       * (buffered) interval. Two posibilities here:
+       *
+       * a) search for the interval from the begining of the buffer (to here),
+       *    assuming the requested date is buffered (i.e. mbuf[0].t() < t):
+       */
+      if (t > mbuf[0].t()) {
+        /* search for interval from the top of the buffer */
+        auto it = std::lower_bound(
+            mbuf.begin(), mbuf.begin() + cj + 1, t,
+            [](const attitude_details::MeasuredAttitudeData &bt,
+               const MjdEpoch &tval) { return bt.t() < tval; });
+        assert((it < mbuf.begin() + cj + 1) && (it < mbuf.end()));
+        cj = std::distance(mbuf.begin(), it) - 1;
+        return 0;
+      } else {
+        /* b) the requested date is prior to the first date buffered! cannot
+         *    go backwards in the stream, sorry ....
+         */
         fprintf(stderr,
                 "[ERROR] Request for quaternion which is prior to current "
                 "buffered block! (traceback: %s)\n",
                 __func__);
         return 30;
       }
-      /* search for interval from the top of the buffer */
-      it = std::lower_bound(mbuf.begin(), mbuf.begin() + cj + 1, t,
-                            [](const attitude_details::MeasuredAttitudeData &bt,
-                               const MjdEpoch &tval) { return bt.t() < tval; });
-      assert(it < mbuf.begin() + cj + 1);
-      cj = std::distance(it, mbuf.begin()) - 1;
-      return 0;
+      /* end block: requesting prior time */
     }
 
     /* should never reach this point! */
+    fprintf(stderr,
+            "[ERROR] x2 : An error that should never happen! (traceback: %s)\n",
+            __func__);
     return 80;
   }
 
@@ -352,7 +393,6 @@ public:
       : mstream(fn), cj(-1),
         mbuf(make_array<attitude_details::MeasuredAttitudeData, BufferSize>(
             numq, numa)) {
-    // mbuf(DsoAttitudeStream::constructBuffer(numq, numa)) {
     /* initialize first BufferSize instances from stream */
     if (initialize()) {
       throw std::runtime_error(
@@ -396,7 +436,7 @@ public:
     if (this->hunt(tt)) {
       char buf[64];
       fprintf(stderr,
-              "[ERROR] Failed to get measured attitude for epoch: %s (TT) "
+              "[ERROR] Failed getting measured attitude for epoch: %s (TT) "
               "(traceback: %s)\n",
               to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(tt, buf),
               __func__);

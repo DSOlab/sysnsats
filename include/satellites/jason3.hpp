@@ -24,7 +24,6 @@
  * rotate the macromodel though, we get two.
  */
 
-
 #include "satellites/macromodel_core.hpp"
 #include <vector>
 
@@ -39,16 +38,24 @@ template <> struct SatelliteAttitudeTraits<SATELLITE::JASON3> {
 
 template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {{
-{0.783e0,-1.e0,0.e0,0.e0,0.2000e0,0.7000e0,0.1000e0,0.0000e0,0.9870e0,0.0130},
-{0.783e0,1.e0,0.e0,0.e0,0.2000e0,0.4000e0,0.4000e0,0.0000e0,1.0000e0,0.0000},
-{2.040e0,0.e0,-1.e0,0.e0,0.5730e0,0.3840e0,0.0430e0,0.1040e0,0.5690e0,0.3280},
-{2.040e0,0.e0,1.e0,0.e0,0.5390e0,0.4240e0,0.0370e0,0.0890e0,0.6270e0,0.2830},
-{3.105e0,0.e0,0.e0,-1.e0,0.2460e0,0.7520e0,0.0020e0,0.0050e0,0.9770e0,0.0170},
-{3.105e0,0.e0,0.e0,1.e0,0.2130e0,0.4530e0,0.3340e0,0.0370e0,0.2870e0,0.6760},
-{9.8e0,1.e0,0.e0,0.e0,0.1000e0,0.2950e0,0.6050e0,0.0970e0,0.0980e0,0.8030},
-{9.8e0,-1.e0,0.e0,0.e0,0.1000e0,0.3000e0,0.6000e0,0.0350e0,0.0350e0,0.9310},
-        }};
-  
+      {0.783e0, -1.e0, 0.e0, 0.e0, 0.2000e0, 0.7000e0, 0.1000e0, 0.0000e0,
+       0.9870e0, 0.0130},
+      {0.783e0, 1.e0, 0.e0, 0.e0, 0.2000e0, 0.4000e0, 0.4000e0, 0.0000e0,
+       1.0000e0, 0.0000},
+      {2.040e0, 0.e0, -1.e0, 0.e0, 0.5730e0, 0.3840e0, 0.0430e0, 0.1040e0,
+       0.5690e0, 0.3280},
+      {2.040e0, 0.e0, 1.e0, 0.e0, 0.5390e0, 0.4240e0, 0.0370e0, 0.0890e0,
+       0.6270e0, 0.2830},
+      {3.105e0, 0.e0, 0.e0, -1.e0, 0.2460e0, 0.7520e0, 0.0020e0, 0.0050e0,
+       0.9770e0, 0.0170},
+      {3.105e0, 0.e0, 0.e0, 1.e0, 0.2130e0, 0.4530e0, 0.3340e0, 0.0370e0,
+       0.2870e0, 0.6760},
+      {9.8e0, 1.e0, 0.e0, 0.e0, 0.1000e0, 0.2950e0, 0.6050e0, 0.0970e0,
+       0.0980e0, 0.8030},
+      {9.8e0, -1.e0, 0.e0, 0.e0, 0.1000e0, 0.3000e0, 0.6000e0, 0.0350e0,
+       0.0350e0, 0.9310},
+  }};
+
   /* number of body-frame plates/surfaces in macromodel */
   static constexpr int num_body_frame_surfaces() { return 6; }
 
@@ -81,7 +88,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
     p << 1.0023e0, 0.0000e0, -0.0021e0;
     return p;
   }
-  
+
   /** @brief Rotate the macromodel normal vectors (e.g. body frame to Inertial).
    *
    * The macromodel contains normal vectors (per surface) in the body-frame ref.

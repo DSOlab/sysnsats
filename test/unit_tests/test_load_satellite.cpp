@@ -29,13 +29,23 @@ int main(int argc, char *argv[]) {
   std::uniform_real_distribution<double> unif(-10e0, 20e0);
   std::default_random_engine re;
 
-  if (sat == dso::SATELLITE::JASON3) {
-    auto t = dso::MjdEpoch(60679, dso::FractionalSeconds(13.123));
-    for (int i=0; i<1000; i++) {
-      dso::FractionalSeconds fsec(unif(re));
-      if (i<10 && fsec<dso::FractionalSeconds(0)) fsec = dso::FractionalSeconds(2e0);
-      t.add_seconds(fsec);
 
+  if (sat == dso::SATELLITE::JASON3) {
+  /* keep measured attitude data here */
+  dso::attitude_details::MeasuredAttitudeData data(
+      dso::SatelliteAttitudeTraits<dso::SATELLITE::JASON3>::NumQuaternions,
+      dso::SatelliteAttitudeTraits<dso::SATELLITE::JASON3>::NumAngles);
+
+  auto t = dso::MjdEpoch(60679, dso::FractionalSeconds(13.123));
+  for (int i = 0; i < 1000; i++) {
+    dso::FractionalSeconds fsec(unif(re));
+    if (i < 10 && fsec < dso::FractionalSeconds(0))
+      fsec = dso::FractionalSeconds(2e0);
+    t.add_seconds(fsec);
+    if (att->attitude_at(t, data)) {
+      fprintf(stderr, "ERROR Failed getting attitude!\n");
+      return 9;
+    }
     }
   }
 

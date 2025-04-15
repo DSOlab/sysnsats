@@ -1,4 +1,7 @@
 #include "quaternion_stream.hpp"
+#ifdef DEBUG
+#include <cstdio>
+#endif
 
 namespace {
 
@@ -34,6 +37,11 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
      * are [0,86400)
      */
     tt = dso::MjdEpoch(mjday, dso::FractionalSeconds(secday));
+#ifdef DEBUG
+    if (error) {
+      fprintf(stderr, "[ERROR] Failed parsing date from line [%s] (traceback: %s)\n", line, __func__);
+    }
+#endif
   }
 
   /* read quaternions first */
@@ -47,6 +55,14 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
     }
     qout[q] = Eigen::Quaterniond(data[0], data[1], data[2], data[3]);
   }
+#ifdef DEBUG
+  if (error) {
+    fprintf(stderr,
+            "[ERROR] Failed parsing %d quaternions from line [%s] (traceback: "
+            "%s)\n",
+            num_quaternions, line, __func__);
+  }
+#endif
 
   /* read angles */
   for (int a = 0; a < num_angles; a++) {
@@ -55,6 +71,11 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
       ++error;
     str = res.ptr;
   }
+#ifdef DEBUG
+  if (error) {
+    fprintf(stderr, "[ERROR] Failed parsing %d angles from line [%s] (traceback: %s)\n", num_angles, line, __func__);
+  }
+#endif
 
   return error;
 }
