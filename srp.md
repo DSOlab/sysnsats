@@ -17,4 +17,6 @@
 Reference: Cerri L., Couhert A., Ferrage P., DORIS satellites models implemented
 in POE processing, Ed. 1, Rev. 19, https://ids-doris.org/documents/BC/satellites/DORISSatelliteModels.pdf
 
-$$ \vec{a} = \sum_{j=1}^{m} A_j \cdot <\hat{r}, \hat{n}_j> \left\{ 2 \gamma _s <\hat{r}, \hat{n}_j> \hat{n}_j + \gamma _d \left( \hat{r} - \frac{2}{3} \hat{n}_j \right) + \gamma _a \hat{r} \right\} $$
+$$ 
+\vec{a} = \sum_{j=1}^{m} A_j \cdot <\hat{r}, \hat{n}_j> \left\{ 2 \gamma _s <\hat{r}, \hat{n}_j> \hat{n}_j + \gamma _d \left\( \hat{r} - \frac{2}{3} \hat{n}_j \right) + \gamma _a \hat{r} \right\} 
+$$
