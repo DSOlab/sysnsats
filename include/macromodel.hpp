@@ -26,14 +26,23 @@ class SatelliteMacromodel {
   /** @brief Step 1:  Base "concept" interface (virtual, abstract). */
   struct Concept {
     virtual ~Concept() = default;
-    virtual int num_plates() const noexcept = 0;
+    virtual std::vector<MacromodelSurfaceElement> rotate_macromodel(
+        [[maybe_unused]] const Eigen::Quaterniond *qbody,
+        [[maybe_unused]] const double *thetas,
+        [[maybe_unused]] const Eigen::Vector3d *vecs = nullptr) const noexcept {
+      return std::vector<MacromodelSurfaceElement>{};
+    };
   }; /* SatelliteMacromodel::Concept */
 
   /** @brief  Step 2: Templated model that wraps any SatelliteMacromodel<S> */
-  template <typename Impl> struct Model : Concept {
+  template <typename Impl> struct Model : public Concept {
     Impl impl;
     Model(Impl i) noexcept : impl(std::move(i)) {};
-    int num_plates() const noexcept { return impl.num_plates(); }
+    std::vector<MacromodelSurfaceElement>
+    rotate_macromodel(const Eigen::Quaterniond *qbody, const double *thetas,
+                      const Eigen::Vector3d *vecs = nullptr) const noexcept {
+      return impl.rotate_macromodel(qbody, thetas, vecs);
+    }
   }; /* SatelliteMacromodel::Model<Impl> */
 
   /** @brief Step 3 : Raw pointer to concept (type - erased storage) */
@@ -42,9 +51,9 @@ class SatelliteMacromodel {
 public:
   /** @brief Constructor: creates a concrete model (Step 4). */
   template <typename Impl>
-  SatelliteMacromodel(Impl impl) : self(new Model<Impl>(std::move(impl)));
+  SatelliteMacromodel(Impl impl) : self(new Model<Impl>(std::move(impl))){};
 
-  ~SatelliteMacromodel() { delete self; }
+  ~SatelliteMacromodel() noexcept { delete self; }
 
   /** @brief No copy constructor. */
   SatelliteMacromodel(const SatelliteMacromodel &) = delete;
@@ -53,29 +62,32 @@ public:
   SatelliteMacromodel &operator=(const SatelliteMacromodel &) = delete;
 
   /** Step 5: Forwarding interface. **/
+  std::vector<MacromodelSurfaceElement>
+  rotate_macromodel(const Eigen::Quaterniond *qbody, const double *thetas,
+                    const Eigen::Vector3d *vecs = nullptr) const noexcept {
+    return self->rotate_macromodel(qbody, thetas, vecs);
+  };
 
-  int num_plates() const noexcept { return self->num_plates(); }
-};
-
-/** @brief Factory */
-SatelliteMacromodel createSatelliteMacromodel(SATELLITE sat) {
-  switch (sat) {
-  case SATELLITE::JASON1:
-    return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON1>{});
-  case SATELLITE::JASON2:
-    return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON2>{});
-  case SATELLITE::JASON3:
-    return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON3>{});
-  case SATELLITE::SENTINEL3A:
-    return SatelliteMacromodel(
-        SatelliteMacromodelImpl<SATELLITE::SENTINEL3A>{});
-  case SATELLITE::SENTINEL3B:
-    return SatelliteMacromodel(
-        SatelliteMacromodelImpl<SATELLITE::SENTINEL3B>{});
-  default:
-    throw std::runtime_error("Unknown animal");
+  /** @brief Factory */
+  SatelliteMacromodel createSatelliteMacromodel(SATELLITE sat) {
+    switch (sat) {
+    case SATELLITE::JASON1:
+      return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON1>{});
+    case SATELLITE::JASON2:
+      return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON2>{});
+    case SATELLITE::JASON3:
+      return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON3>{});
+    case SATELLITE::SENTINEL3A:
+      return SatelliteMacromodel(
+          SatelliteMacromodelImpl<SATELLITE::SENTINEL3A>{});
+    case SATELLITE::SENTINEL3B:
+      return SatelliteMacromodel(
+          SatelliteMacromodelImpl<SATELLITE::SENTINEL3B>{});
+    default:
+      throw std::runtime_error("Unknown animal");
+    }
   }
-}
+}; /*class SatelliteMacromodel */
 
 } /* namespace dso */
 

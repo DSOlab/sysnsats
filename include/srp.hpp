@@ -3,8 +3,7 @@
 
 #include "eigen3/Eigen/Eigen"
 
-namespace dso
-{
+namespace dso {
 Eigen::Vector3d plate_solar_radiation_pressure() noexcept;
 } /* namespace dso */
 

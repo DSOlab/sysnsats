@@ -18,8 +18,6 @@ struct SatelliteMacromodelTraits {}; /* struct SatelliteMacromodelTraits */
 /** @brief SatelliteMacromodelImpl utilities API. */
 template <SATELLITE S> struct SatelliteMacromodelImpl {
   using Traits = SatelliteMacromodelTraits<S>;
-
-  int num_plates() const noexcept { return Traits::num_plates(); }
 };
 
 } /* namespace dso */
