@@ -14,6 +14,32 @@ namespace attitude_details {
 /** @brief Maximum characters in any dso-quaternion file line. */
 constexpr const int MAX_ATTITUDE_LINE_CHARS = 248;
 
+/** @brief A class to hold attitude information, i.e. quaternions and (rotation)
+ * angles that can be used to represent satellite attitude at any instance in
+ * time. Most satellites (if not all) will need at max one quaternion, to
+ * specify rotation of the body frame (between satellite-fixed RF and interial
+ * RF) and at maximum two rotation angles to specify solar panle rotation around
+ * some axis. This class thus has the capacity to hold one quaternion and two
+ * angles.
+ *
+ * The actual number of quaternons and rotation angles, are specified at
+ * construction and are stored in the classe's num_quat_ and num_angles_ member
+ * variables.
+ *
+ * Any instance of the class will also hold the epoch (in TT) at which the
+ * attitude is specified for.
+ *
+ * Normally, one should not create such instances using "magic numbers" but
+ * instead using the SatelliteAttitudeTraits template class. I.e.
+ * @code
+ * // do not use this ...
+ * attitude_details::MeasuredAttitudeData data(1,2);
+ * // ... but this:
+ * attitude_details::MeasuredAttitudeData data(
+ *    SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions,
+ *    SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles);
+ * @endcode
+ */
 struct MeasuredAttitudeData {
   /* number of quaternions stored */
   static constexpr const int quat_capacity = 1;

@@ -32,3 +32,63 @@ find_file(JA3Q
   REQUIRED
 )
 add_test(NAME load_jason3 COMMAND load_satellite "ja3" ${JA3Q})
+
+add_executable(ja3_measured_attitude test_jason3_measured_attitude.cpp)
+target_link_libraries(ja3_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(JA3Q
+  NAMES qua_ja3.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME ja3_measured_attitude COMMAND ja3_measured_attitude ${JA3Q})
+
+add_executable(ja2_measured_attitude test_jason2_measured_attitude.cpp)
+target_link_libraries(ja2_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(JA2Q
+  NAMES qua_ja2.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME ja2_measured_attitude COMMAND ja2_measured_attitude ${JA2Q})
+
+add_executable(ja1_measured_attitude test_jason1_measured_attitude.cpp)
+target_link_libraries(ja1_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(JA1Q
+  NAMES qua_ja1.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME ja1_measured_attitude COMMAND ja1_measured_attitude ${JA1Q})
+
+add_executable(s3a_measured_attitude test_sentinel3a_measured_attitude.cpp)
+target_link_libraries(s3a_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(S3AQ
+  NAMES qua_s3a.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME s3a_measured_attitude COMMAND s3a_measured_attitude ${S3AQ})
+
+add_executable(s3b_measured_attitude test_sentinel3b_measured_attitude.cpp)
+target_link_libraries(s3b_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(S3BQ
+  NAMES qua_s3b.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME s3b_measured_attitude COMMAND s3b_measured_attitude ${S3BQ})
+
+add_executable(s6a_measured_attitude test_sentinel6a_measured_attitude.cpp)
+target_link_libraries(s6a_measured_attitude PRIVATE sysnsats ${PROJECT_DEPENDENCIES})
+find_file(S6AQ
+  NAMES qua_s6a.csv
+  PATHS ${CMAKE_SOURCE_DIR}/data
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+add_test(NAME s6a_measured_attitude COMMAND s6a_measured_attitude ${S6AQ})

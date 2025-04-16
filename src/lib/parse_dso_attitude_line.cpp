@@ -1,4 +1,4 @@
-#include "quaternion_stream.hpp"
+#include "attitude_stream.hpp"
 #ifdef DEBUG
 #include <cstdio>
 #endif
@@ -39,7 +39,9 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
     tt = dso::MjdEpoch(mjday, dso::FractionalSeconds(secday));
 #ifdef DEBUG
     if (error) {
-      fprintf(stderr, "[ERROR] Failed parsing date from line [%s] (traceback: %s)\n", line, __func__);
+      fprintf(stderr,
+              "[ERROR] Failed parsing date from line [%s] (traceback: %s)\n",
+              line, __func__);
     }
 #endif
   }
@@ -73,7 +75,9 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
   }
 #ifdef DEBUG
   if (error) {
-    fprintf(stderr, "[ERROR] Failed parsing %d angles from line [%s] (traceback: %s)\n", num_angles, line, __func__);
+    fprintf(stderr,
+            "[ERROR] Failed parsing %d angles from line [%s] (traceback: %s)\n",
+            num_angles, line, __func__);
   }
 #endif
 

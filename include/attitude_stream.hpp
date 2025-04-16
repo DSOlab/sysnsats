@@ -1,6 +1,20 @@
 #ifndef __DSO_ATTITUDE_QUATERNION_STREAM_HPP__
 #define __DSO_ATTITUDE_QUATERNION_STREAM_HPP__
 
+/* @file
+ *
+ * This file is meant to implement a class that will enable streaming-like,
+ * forward parsing of attitude data. "streaming-like" means that the class
+ * can walk forward in the data file, parse records and store them in a
+ * buffer. This buffer can then be used to query satellite specific attitude
+ * data, i.e. quaternions and/or rotation angles.
+ *
+ * The data files can be different for each satellite; we need different number
+ * of quaternions and angles depending on satellite structure. The data files
+ * are created using the 'attitude' project (see
+ * https://github.com/xanthospap/attitude).
+ */
+
 #include "core/measured_attitude_data.hpp"
 #include "datetime/calendar.hpp"
 #include "datetime/datetime_write.hpp"
@@ -16,25 +30,31 @@ namespace dso {
 
 /** @brief Parse a record line from a DSO quaternion file.
  *
- * @param[in] num_quaternions Number of quaternions the file holds per line.
- * @param[in] num_angles      Number of angles the file holds per line.
- * @param[in] line The record line.
- * @param[out] tt The epoch record of the line resolved.
- * @param[out] qout An array of Eigen::Quaterniond's of size at least
- * num_quaternions. At output (if successeful), the first num_quaternions will
- * hold the quaternions parsed.
- * @param[out] aout An array of doubles of size at least num_angles. At output
- * (if successeful), the first num_angles will hold the angles parsed.
+ * @param[in] line  The record line (from a DSO measured attitude file, see
+ *                  https://github.com/xanthospap/attitude).
+ * @param[out] data A attitude_details::MeasuredAttitudeData instance that
+ *                  will hold (at output) the parsed data. The number of
+ *                  quaternions/angles to be read off from the line, are
+ *                  extracted from this instance.
  * @return Anything other than 0 denotes an error.
  */
 int parse_attitude_line(const char *line,
                         attitude_details::MeasuredAttitudeData &data) noexcept;
 
+/** @brief A class to enable streaming-like functionality for DSO attitude
+ * files.
+ *
+ * @tparam BufferSize The number of attitude records to store in the internal
+ * buffer.
+ *
+ * @example test_jason3_measured_attitude.cpp
+ */
 template <int BufferSize> class DsoAttitudeStream {
 private:
   /** The (input) stream; opens at construction. */
   std::ifstream mstream;
-  /** Current index in mbuf. */
+  /** Current index in mbuf (always in range [0, BufferSize) except if otherwise
+   * noted). */
   int cj;
   /** A buffer holding MeasuredAttitudeData's. */
   std::array<attitude_details::MeasuredAttitudeData, BufferSize> mbuf;
@@ -64,17 +84,20 @@ private:
    *
    * The interpolation is performed using the SLERP algorithm. The number of
    * different quaternion (pairs) to be interpolated are found by the passed
-   * in attitude_details::MeasuredAttitudeData instance (i.e. att.mnq).
+   * in attitude_details::MeasuredAttitudeData instance (i.e.
+   * att.num_quaternions).
    *
-   * The computed quaternions are store in the att instance.attitude_details
+   * The computed quaternions are store in the passed in att instance.
    *
    * @param[in] tt Epoch of interpolation request, TT.
    * @param[in] att A attitude_details::MeasuredAttitudeData instance. The
-   * number of quaternions stored in here (i.e. att.mnq) is the number of
-   * quaternions we are going to interpolate. Hence, att.mnq should be <= to the
-   * attitude_details::MeasuredAttitudeData instances hold in buffer. Most
-   * probably, the equality should hold. At output, the epoch of the instance
-   * will be set to tt, and the stored quaternion will hold the computed values.
+   * number of quaternions stored in here (i.e. att.num_quaternions) is the
+   * number of quaternions we are going to interpolate. Hence,
+   * att.num_quaternions should be
+   * <= to the attitude_details::MeasuredAttitudeData instances hold in buffer.
+   * Most probably, the equality should hold. At output, the epoch of the
+   * instance will be set to tt, and the stored quaternion will hold the
+   * computed values.
    * @return Always zero.
    */
   int qslerp(const MjdEpoch &tt,
@@ -110,16 +133,17 @@ private:
    * but this is not checked here!
    *
    * The interpolation is performed using a linear interpolation algorithm. The
-   * number of different angles (pairs) to be interpolated are found by the
-   * passed in attitude_details::MeasuredAttitudeData instance (i.e. att.mna).
+   * number of different angles to be interpolated are found by the
+   * passed in attitude_details::MeasuredAttitudeData instance (i.e.
+   * att.num_angles).
    *
-   * The computed angles are stored in the att instance.attitude_details
+   * The computed angles are stored in the passed in att instance.
    *
    * @param[in] tt Epoch of interpolation request, TT.
    * @param[in] att A attitude_details::MeasuredAttitudeData instance. The
-   * number of angles stored in here (i.e. att.mna) is the number of
-   * angles we are going to interpolate. Hence, att.mna should be <= to the
-   * attitude_details::MeasuredAttitudeData instances hold in buffer. Most
+   * number of angles stored in here (i.e. att.num_angles) is the number of
+   * angles we are going to interpolate. Hence, att.num_angles should be <= to
+   * the attitude_details::MeasuredAttitudeData instances hold in buffer. Most
    * probably, the equality should hold. At output, the epoch of the instance
    * will be set to tt, and the stored angles will hold the computed values.
    * @return Always zero.
@@ -148,15 +172,11 @@ private:
     return 0;
   }
 
-  /** @brief Read and parse the next line of the (member) stream.
-   * The resolved instance will be stored in mbuf[idx].
+  /** @brief Read and parse the next line of the stream.
    *
-   * @param[in] idx The index of the instance in mbuf which will hold the
-   *                instance resolved. E.g. parse_next_record(4), will read
-   *                the next line off from the stream, resolve it to a
-   *                attitude_details::MeasuredAttitudeData, and assign
-   *                this to mbuf[4].
-   *  @return Anything other than zero denotes an error.
+   * @param[out] data A attitude_details::MeasuredAttitudeData instance, where
+   * the parsed data will be stored at.
+   * @return Anything other than zero denotes an error.
    */
   int parse_next_record(attitude_details::MeasuredAttitudeData &data) noexcept {
     char line[attitude_details::MAX_ATTITUDE_LINE_CHARS];
@@ -171,7 +191,8 @@ private:
     return 10;
   }
 
-  /** @brief Read BufferSize records (i.e. lines).
+  /** @brief Read BufferSize records (i.e. lines) from the current stream
+   * position.
    *
    * Read, parse and store the BufferSize records (i.e. lines) first
    * encountered in the current stream position. Store them the instance's
@@ -200,6 +221,7 @@ private:
               "[ERROR] Failed parsing quaternion line (traceback: %s)\n",
               __func__);
     }
+
     /* set the current index to 0 */
     cj = 0;
     return error;
@@ -215,8 +237,15 @@ private:
    * The current index, i.e. cj, is set to BufferSize - n - 1, i.e. just before
    * the first new record.
    *
-   * @param[n] Number of new records to read from the store and store. The
-   * following must hold: 0 < n <= BufferSize.
+   * @warning To save space and time, this function does not work incrementally,
+   * i.e. try to leaft shit, parse and store n times. It works in "batch" mode.
+   * Hence, if e.g. n=5, and the first 4 records are correctly parsed and
+   * stored, but EOF is encountered and we cannot read the 5th line, the
+   * function will signal an error. This inhibits the reading of the last lines
+   * in a data file.
+   *
+   * @param[n] Number of new records to read from the stream and store in
+   * buffer. The following must hold: 0 < n <= BufferSize.
    * @return Anything other than zero denotes an error.
    */
   int collect_new_batch(int n = BufferSize - 1) noexcept {
@@ -240,18 +269,21 @@ private:
     return error;
   }
 
-  /** @brief Read data off from the stream untill we reach (and pass) t.
+  /** @brief Read data off from the stream untill we reach (and pass) `t`.
    *
    * The function will keep on reading and collecting new data off from the
    * stream, untill the instance's buffer holds an interval for which
-   * buffer[j].mtt <= t < buffer[j+1].mtt; i.e. the epoch is availble within
+   * `buffer[j].mtt <= t < buffer[j+1].mtt`; i.e. the epoch is availble within
    * the buffer (e.g. for interpolation).
+   *
+   * @warning If `t` is one of the last lines in the data file, then we may be
+   * unable to read a valid interval. See the warning in collect_new_batch.
    *
    * @param[in] t The epoch of request in TT.
    * @return Anything other than 0, denotes an error (could also be EOF).
    */
   int collect_range(const MjdEpoch &t) noexcept {
-    if (mbuf[0].t() < t) {
+    if (t <= mbuf[0].t()) {
       fprintf(
           stderr,
           "[ERROR] Cannot read quaternion stream backwards! (traceback: %s)\n",
@@ -279,15 +311,23 @@ private:
     return error;
   }
 
-  /** @brief Place the instance's index cj at an interval for which:
-   * buf[cj].t<=t<buf[cj+1].t
+  /** @brief Place the instance's index `cj` at an interval for which:
+   * `buf[cj].t<=t<buf[cj+1].t`
    *
    * If needed, the function may use the stream to load new data to the buffer.
-   * At success, on function output, cj will be conviniently placed such that:
-   * buf[cj].t<=t<buf[cj+1].t
+   * At success, on function output, `cj` will be conviniently placed such that:
+   * `buf[cj].t()<=t<buf[cj+1].t()`
    *
    * @param[in] t The epoch of request in TT.
    * @return Anything other than 0, denotes an error (could also be EOF).
+   *
+   * Exit Codes:
+   *  0 : Success.
+   *  2 : Failed collecting next measured attitude from stream (e.g. parsing
+   *      error, EOF, etc).
+   * 30 : Given date is not buffered and is placed before the current stream
+   *      position. We cannot go backwards in the file/stream.
+   * 80 : An error that should never happen.
    */
   int hunt(const MjdEpoch &t) noexcept {
 #ifdef DEBUG
@@ -368,12 +408,13 @@ private:
     return 80;
   }
 
-  /** @brief Helper function to create mbuf.
+  /** @brief Helper function to create mbuf (part I).
    *
    * mbuf cannot be default initialized in the constructor, cause
    * atiitude_details::MeasuredAttitudeData does not have a default constrctor.
    * This function, helps construct such an array so that it can be used in the
    * constructor body.
+   *
    * It only serves this purpose and should not be used otherwise.
    */
   template <typename T, std::size_t... Is>
@@ -382,12 +423,29 @@ private:
     return {{(static_cast<void>(Is), T(q, a))...}};
   }
 
+  /** @brief Helper function to create mbuf (part II).
+   * @see make_array_impl
+   */
   template <typename T, std::size_t N>
   constexpr std::array<T, N> make_array(int q, int a) {
     return make_array_impl<T>(q, a, std::make_index_sequence<N>{});
   }
 
 public:
+  /** @brief Constructor.
+   * @param[in] fn A DSO measured attitude data file (see
+   * https://github.com/xanthospap/attitude)
+   * @param[in] numq Number of quaternions we will need to parse/store. This
+   * should normally signalled by the respective satellite's traits, e.g.
+   * SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions
+   * @param[in] numa Number of (rotation) angles we will need to parse/store.
+   * This should normally signalled by the respective satellite's traits, e.g.
+   * SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles
+   * @param[in] t An epoch in TT; if set, then at instance construction, the
+   * file will be searched for a suitable interval to hold `t`. If the default
+   * value is  used for `t`, i.e. MjdEpoch::min(), then the buffer will just be
+   * filled with the first BufferSize records.
+   */
   DsoAttitudeStream(const char *fn, int numq, int numa,
                     const MjdEpoch &t = MjdEpoch::min())
       : mstream(fn), cj(-1),
@@ -411,12 +469,15 @@ public:
 
   /** @brief No copy constructor. */
   DsoAttitudeStream(const DsoAttitudeStream &other) = delete;
+
   /** @brief No assignment operator. */
   DsoAttitudeStream &operator=(const DsoAttitudeStream &other) = delete;
+
   /** @brief Move constructor. */
   DsoAttitudeStream(DsoAttitudeStream &&other) noexcept
       : mstream(std::move(other.mstream)), cj(other.cj),
         mbuf(std::move(other.mbuf)) {}
+
   /** @brief Move assignment operator. */
   DsoAttitudeStream &operator=(DsoAttitudeStream &&other) noexcept {
     mstream = std::move(other.mstream);
@@ -427,20 +488,33 @@ public:
 
   /** @brief Get the (measured) attitude at a given epoch from the stream.
    *
+   * The quaternions (if any) are interpolated using the slerp method. Angles
+   * (if any) are interpolated using linear interpolation with the two
+   * surrounding values.
+   *
+   * This is the most vital function of the class. Upon creation, one should
+   * probably only need this function to navigate through the file (in a forward
+   * manner) and get the attitude for any epoch of request. The function will
+   * handle everything (file navigation, streaming, etc).
+   *
    * @param[in] tt The epoch of request, in TT.
-   * @return Anything other than 0 denotes an error.
+   * @return Anything other than 0 denotes an error. If the return value is
+   * other thatn zero (i.e. an error), the error codes are returned as in the
+   * hunt method.
+   *
+   * @see hunt
    */
   int attitude_at(const MjdEpoch &tt,
                   attitude_details::MeasuredAttitudeData &att) noexcept {
     /* lets get at the right interval (in buffer) */
-    if (this->hunt(tt)) {
+    if (int error = this->hunt(tt)) {
       char buf[64];
       fprintf(stderr,
               "[ERROR] Failed getting measured attitude for epoch: %s (TT) "
               "(traceback: %s)\n",
               to_char<YMDFormat::YYYYMMDD, HMSFormat::HHMMSSF>(tt, buf),
               __func__);
-      return 1;
+      return error;
     }
 
     /* interpolate quaternion(s) */

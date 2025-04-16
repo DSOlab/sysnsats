@@ -1,7 +1,34 @@
 #ifndef __DSO_SATELLITE_ATTITUDE_GEN_HPP__
 #define __DSO_SATELLITE_ATTITUDE_GEN_HPP__
 
-#include "quaternion_stream.hpp"
+/* @file
+ *
+ * This file is includes top-level definitions for handling satellite attitude.
+ * We use inheritance/polymorphism here, to take into account different
+ * possibilities:
+ *
+ * - MeasuredAttitude which is based on DsoAttitudeStream; this type of attitude
+ * represents measured attitude (i.e. quaternions and/or rotation angles) that
+ * are extracted from a respective DSO data file.
+ * - PhaseLawAttitude which (in the future) will handle computing attitude based
+ * on a phase law.
+ * - NoAttitude when no attitude information is available.
+ *
+ * The base class (for all the above) is SatelliteAttitude, so that we can:
+ * @code
+ * SatelliteAttitude *att;
+ * // qua_ja3.csv is a DSO attitude file
+ * att = new MeasuredAttitude(SATELLITE::JASON3, "qua_ja3.csv");
+ * // placeholder for attitude data, Jason-3
+ * attitude_details::MeasuredAttitudeData data(
+ *    SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions,
+ *    SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles);
+ * // request attitude data for some date
+ * att->attitude_at(t_inTT, data);
+ * @endcode
+ */
+
+#include "attitude_stream.hpp"
 #include "satellite.hpp"
 
 namespace dso {
@@ -20,8 +47,10 @@ class SatelliteAttitude {
 public:
   /** @brief Constructor */
   SatelliteAttitude(SATELLITE s) noexcept : msat(s) {};
+
   /** @brief Must define a virtual destructor. */
-  virtual ~SatelliteAttitude() noexcept {};
+  virtual ~SatelliteAttitude() noexcept = default;
+
   /** @brief Get the attitude at any given epoch.
    *
    * The attitude ie returned via the attitude_details::MeasuredAttitudeData and
@@ -42,37 +71,38 @@ class MeasuredAttitude final : public SatelliteAttitude {
   /** Measured attitude stream */
   BType matt;
 
-  BType static factory(SATELLITE sat, const char *fn) {
+  BType static factory(SATELLITE sat, const char *fn,
+                       const MjdEpoch &t = MjdEpoch::min()) {
     switch (sat) {
     case (SATELLITE::JASON1):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::JASON1>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON1>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::JASON1>::NumAngles, t);
 
     case (SATELLITE::JASON2):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::JASON2>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON2>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::JASON2>::NumAngles, t);
 
     case (SATELLITE::JASON3):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::JASON3>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::JASON3>::NumAngles, t);
 
     case (SATELLITE::SENTINEL3A):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL3A>::NumAngles, t);
 
     case (SATELLITE::SENTINEL3B):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL3B>::NumAngles, t);
 
     case (SATELLITE::SENTINEL6A):
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumQuaternions,
-          SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles);
+          SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles, t);
     default:
       throw std::runtime_error(
           "[ERROR] Failed to construct MeasuredAttitude\n");
@@ -86,8 +116,9 @@ public:
    * information from. These files are preprocessed by DSO and are expected to
    * have a certain format.
    */
-  MeasuredAttitude(SATELLITE sat, const char *fn)
-      : SatelliteAttitude(sat), matt(MeasuredAttitude::factory(sat, fn)) {}
+  MeasuredAttitude(SATELLITE sat, const char *fn,
+                   const MjdEpoch &t = MjdEpoch::min())
+      : SatelliteAttitude(sat), matt(MeasuredAttitude::factory(sat, fn, t)) {}
 
   int attitude_at(
       const MjdEpoch &t,

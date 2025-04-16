@@ -1,10 +1,17 @@
 #ifndef __DSO_SATELLITE_MACROMODEL_SURFACE_ELEMENT_HPP__
 #define __DSO_SATELLITE_MACROMODEL_SURFACE_ELEMENT_HPP__
 
+/** @file
+ *
+ * Implement an individual macromodel surface. A satellite macromodel thus,
+ * would be a collection of MacromodelSurfaceElement.
+ */
+
 #include "eigen3/Eigen/Eigen"
 
 namespace dso {
 
+/** @brief An individual macromodel surface. */
 struct MacromodelSurfaceElement {
   /* mpool = [0 1 2 3 4 5 6 7 8 9]
    *          0: area
@@ -15,7 +22,7 @@ struct MacromodelSurfaceElement {
    */
   double mpool[10];
 
-  /* @brief Return the normal vector in the satellite body frame [m].
+  /** @brief Return the normal vector in the satellite body frame [m].
    *
    * Const version (returns a const Eigen::Vector3d reference to mpool[1:3])
    */
@@ -23,7 +30,7 @@ struct MacromodelSurfaceElement {
     return Eigen::Map<const Eigen::Vector3d>(mpool + 1);
   }
 
-  /* @brief Return the normal vector in the satellite body frame [m].
+  /** @brief Return the normal vector in the satellite body frame [m].
    *
    * Non-const version (allows writing into mpool[1:3])
    */
