@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     dso::FractionalSeconds fsec(unif(re));
     if (i < 10 && fsec < dso::FractionalSeconds(0))
       fsec = dso::FractionalSeconds(2e0);
-    t.add_seconds(fsec);
+    t.add_seconds_inplace(fsec);
     if (att->attitude_at(t, data)) {
       fprintf(stderr, "ERROR Failed getting attitude!\n");
       return 9;
