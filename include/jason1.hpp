@@ -22,9 +22,13 @@
  *
  * Note that the macromodel only has reference values for one panel; when we
  * rotate the macromodel though, we get two.
+ *
+ * For this macromodel, the optical coefficients do not add up to unity! I do
+ * not know why that is.
  */
 
-#include "satellites/macromodel_core.hpp"
+#include "macromodel_surface_element.hpp"
+#include "satellite_macromodel_traits.hpp"
 #include <vector>
 
 namespace dso {
@@ -132,9 +136,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
    * num_body_frame_surfaces() + num_solar_array_surfaces() * num_solar_arrays()
    *
    */
-  std::vector<MacromodelSurfaceElement> rotate_macromodel(
+  static std::vector<MacromodelSurfaceElement> rotate_macromodel(
       const Eigen::Quaterniond *qbody, const double *thetas,
-      [[maybe_unused]] const Eigen::Vector3d * = nullptr) const noexcept {
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
 
     /* resulting rotated macromodel (add one solar array) */
     std::vector<MacromodelSurfaceElement> rotated;

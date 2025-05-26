@@ -39,6 +39,9 @@ namespace satellite_details {
 constexpr const int MeasuredAttitudeBufferSize = 15;
 } /* namespace satellite_details */
 
+attitude_details::MeasuredAttitudeData
+measured_attitude_data_factory(SATELLITE sat);
+
 /** @brief Base class, does nothing usefull! */
 class SatelliteAttitude {
   /** the satellite */
@@ -51,6 +54,8 @@ public:
   /** @brief Must define a virtual destructor. */
   virtual ~SatelliteAttitude() noexcept = default;
 
+  SATELLITE satellite() const noexcept { return msat; }
+
   /** @brief Get the attitude at any given epoch.
    *
    * The attitude ie returned via the attitude_details::MeasuredAttitudeData and
@@ -62,6 +67,7 @@ public:
   virtual int
   attitude_at(const MjdEpoch &t,
               attitude_details::MeasuredAttitudeData &att) noexcept = 0;
+  virtual int reload() = 0;
 }; /* SatelliteAttitude */
 
 /** @brief Measured attitude, i.e. a number of quaternions and/or angles. */
@@ -125,6 +131,8 @@ public:
       attitude_details::MeasuredAttitudeData &att) noexcept override {
     return matt.attitude_at(t, att);
   }
+
+  int reload() { return matt.reload(); }
 }; /* MeasuredAttitude */
 
 /** @brief Phase-law attitude (not measured). */

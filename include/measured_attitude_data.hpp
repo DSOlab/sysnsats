@@ -53,7 +53,7 @@ struct MeasuredAttitudeData {
   /* epoch of measured attitude in TT */
   MjdEpoch mtt_;
   /* array of quaternions */
-  alignas(16) Eigen::Quaterniond mq_;
+  Eigen::Quaterniond mq_;
   /* array of angles */
   double ma_[angles_capacity] = {0e0, 0e0};
 

@@ -37,6 +37,22 @@ enum class SATELLITE {
  */
 SATELLITE translate_satid(const char *satid);
 
+/** @brief Translate an Sp3 satellite code to a SATELLITE enum.
+ *
+ * Only the first three chars of the passed in array are considered, hence the 
+ * string does not have to be null-terminated. The function will throw if the 
+ * id is not matched to a SATELLITE enum.
+ * See list at https://cddis.nasa.gov/Techniques/sp3c_satlist.html
+ *
+ * @paramp[in] satid The satellite id. Does not have to be null-terminated,
+ *                   and can have any number of leading whitespaces. The
+ *                   function will discard leading whitespaces, and check the
+ *                   3 characters that follow. These are considered as the
+ *                   input string. Example "L04".
+ * @return The corresponding SATELLITE instance.
+ */
+SATELLITE translate_sp3_satid(const char *satid);
+
 /** @brief Empty struct to be specialized for each satellite attitude traits */
 template <SATELLITE S> struct SatelliteAttitudeTraits {};
 

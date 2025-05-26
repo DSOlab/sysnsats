@@ -4,4 +4,7 @@ target_sources(sysnsats
     ${CMAKE_CURRENT_SOURCE_DIR}/csatid.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/conical_occultation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/parse_dso_attitude_line.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/plate_solar_radiation_pressure.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/solar_radiation_pressure.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/measured_attitude_data_factory.cpp
 )

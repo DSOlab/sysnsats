@@ -13,13 +13,20 @@
 #ifndef __DSO_SATELLITE_MACROMODEL_FINAL_HPP__
 #define __DSO_SATELLITE_MACROMODEL_FINAL_HPP__
 
-#include "satellites/jason1.hpp"
-#include "satellites/jason2.hpp"
-#include "satellites/jason3.hpp"
-#include "satellites/sentinel3a.hpp"
-#include "satellites/sentinel3b.hpp"
+#include "macromodel_surface_element.hpp"
+#include "satellite.hpp"
 
 namespace dso {
+
+/** @brief SatelliteMacromodelImpl utilities API. */
+template <SATELLITE S> struct SatelliteMacromodelImpl {
+  using Traits = SatelliteMacromodelTraits<S>;
+  static std::vector<MacromodelSurfaceElement>
+  rotate_macromodel(const Eigen::Quaterniond *qbody, const double *angles,
+                    const Eigen::Vector3d *vecs) noexcept {
+    return Traits::rotate_macromodel(qbody, angles, vecs);
+  };
+};
 
 class SatelliteMacromodel {
 
@@ -66,10 +73,10 @@ public:
   rotate_macromodel(const Eigen::Quaterniond *qbody, const double *thetas,
                     const Eigen::Vector3d *vecs = nullptr) const noexcept {
     return self->rotate_macromodel(qbody, thetas, vecs);
-  };
+  }; /* class SatelliteMacroModel */
 
   /** @brief Factory */
-  SatelliteMacromodel createSatelliteMacromodel(SATELLITE sat) {
+  static SatelliteMacromodel createSatelliteMacromodel(SATELLITE sat) {
     switch (sat) {
     case SATELLITE::JASON1:
       return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::JASON1>{});
@@ -83,11 +90,16 @@ public:
     case SATELLITE::SENTINEL3B:
       return SatelliteMacromodel(
           SatelliteMacromodelImpl<SATELLITE::SENTINEL3B>{});
+    case SATELLITE::SENTINEL6A:
+      return SatelliteMacromodel(
+          SatelliteMacromodelImpl<SATELLITE::SENTINEL6A>{});
     default:
-      throw std::runtime_error("Unknown animal");
+      throw std::runtime_error(
+          "[ERROR] Unknown satellite, failed to create Macromodel!\n");
     }
   }
-}; /*class SatelliteMacromodel */
+
+}; /* class SatelliteMacromodel */
 
 } /* namespace dso */
 

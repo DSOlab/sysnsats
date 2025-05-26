@@ -25,7 +25,8 @@
  *  * j belongs to the panel: n_I = (satellite-to-sun)/|(satellite-to-sun)|
  */
 
-#include "satellites/macromodel_core.hpp"
+#include "macromodel_surface_element.hpp"
+#include "satellite_macromodel_traits.hpp"
 #include <vector>
 
 namespace dso {
@@ -122,10 +123,10 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> {
    * num_body_frame_surfaces() + num_solar_array_surfaces() * num_solar_arrays()
    *
    */
-  std::vector<MacromodelSurfaceElement>
+  static std::vector<MacromodelSurfaceElement>
   rotate_macromodel(const Eigen::Quaterniond *qbody,
                     [[maybe_unused]] const double *,
-                    const Eigen::Vector3d *satsun) const noexcept {
+                    const Eigen::Vector3d *satsun) noexcept {
 
     /* resulting rotated macromodel */
     std::vector<MacromodelSurfaceElement> rotated;

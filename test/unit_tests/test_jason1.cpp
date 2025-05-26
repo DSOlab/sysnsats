@@ -1,4 +1,4 @@
-#include "satellites/jason1.hpp"
+#include "satellite.hpp"
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -7,12 +7,13 @@
 using namespace dso;
 constexpr const double TOLERANCE = 1e-12;
 
-int main()
-{
+int main() {
 
-  static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::initial_mass() == 489.1);
+  static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::initial_mass() ==
+                489.1);
 
-  static_assert(SatelliteMacromodelTraits<SATELLITE::JASON1>::num_solar_arrays() == 2);
+  static_assert(
+      SatelliteMacromodelTraits<SATELLITE::JASON1>::num_solar_arrays() == 2);
 
   auto dr1 = SatelliteMacromodelTraits<SATELLITE::JASON1>::doris_s1_pco();
   assert(std::abs(dr1(0) - 1.1710) < TOLERANCE);
@@ -28,6 +29,13 @@ int main()
   assert(std::abs(dr1(0) - 0.9550) < TOLERANCE);
   assert(std::abs(dr1(1) - 0.0000) < TOLERANCE);
   assert(std::abs(dr1(2) - 0.0000) < TOLERANCE);
+
+  /* The foloowing does not hold for JASON-1 Macromodel ! */
+  // for (const auto &surface :
+  //      SatelliteMacromodelTraits<SATELLITE::JASON1>::model) {
+  //   assert(std::abs(surface.abs_optical() + surface.diff_optical() +
+  //                   surface.spec_optical() - 1e0) < TOLERANCE);
+  // }
 
   return 0;
 }

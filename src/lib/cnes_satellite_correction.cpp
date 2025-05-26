@@ -1,5 +1,5 @@
 #include "datetime/calendar.hpp"
-#include "satellites/satellites_core.hpp"
+#include "satellite_core.hpp"
 #include <charconv>
 #include <cstdio>
 #include <cstring>
@@ -56,8 +56,9 @@ int dso::cnes_satellite_correction(const char *satmass_fn, MjdEpoch &t,
       str = res.ptr;
 
       /* set current date as tn */
-      tn = dso::MjdEpoch::from_cnes_jd((double)cjd).add_seconds(dso::FractionalSeconds(data[0]));
-      //tn.add_seconds(dso::FractionalSeconds(data[0]));
+      tn = dso::MjdEpoch::from_cnes_jd((double)cjd)
+               .add_seconds(dso::FractionalSeconds(data[0]));
+      // tn.add_seconds(dso::FractionalSeconds(data[0]));
 
       /* stop if we are on the right interval */
       if ((!error) && (t >= tp && t < tn)) {

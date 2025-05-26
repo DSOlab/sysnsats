@@ -15,10 +15,11 @@
  * https://github.com/xanthospap/attitude).
  */
 
-#include "core/measured_attitude_data.hpp"
 #include "datetime/calendar.hpp"
 #include "datetime/datetime_write.hpp"
 #include "eigen3/Eigen/Geometry"
+#include "measured_attitude_data.hpp"
+#include "vmeasured_attitude_data.hpp"
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -524,6 +525,20 @@ public:
     this->aintrpl(tt, att);
 
     return 0;
+  }
+
+  /** @brief Reload the attitude stream.
+   *
+   * Dump current attitude data; got to the top of the file and re-initialize
+   * the instance (reading data again from the top of the file).attitude_details
+   *
+   * @return Anything other than 0 denotes an error.
+   */
+  int reload() {
+    /* got to the top of the file */
+    mstream.seekg(0);
+    /* and reinitialize */
+    return initialize();
   }
 
 }; /* DsoAttitudeStream */

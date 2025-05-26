@@ -10,14 +10,14 @@
  * Version: Ed.Rev.Date 1.19.21/03/2025
  *
  * We adopt here the model given in [1], i.e. Conrad’s 12-surface model
- * (except infrared properties). Note that the satellite actually does have 
- * (two) solar panels, but we pretend it does not for the macromodel, i.e. 
- * they are treated as fixed (i.e. not independently rotating) body frame 
+ * (except infrared properties). Note that the satellite actually does have
+ * (two) solar panels, but we pretend it does not for the macromodel, i.e.
+ * they are treated as fixed (i.e. not independently rotating) body frame
  * surfaces.
  *
- * See Conrad, A., Axelrad, P., Desai, S. et al. (2022). Improved modeling of 
- * the solar radiation pressure for the Sentinel-6 MF spacecraft. In: 
- * Proceedings of the 35th International Technical Meeting of the Satellite 
+ * See Conrad, A., Axelrad, P., Desai, S. et al. (2022). Improved modeling of
+ * the solar radiation pressure for the Sentinel-6 MF spacecraft. In:
+ * Proceedings of the 35th International Technical Meeting of the Satellite
  * Division of The Institute of Navigation (ION GNSS+ 2022) (pp. 3618–3631).
  * https://doi.org/10.33012/2022.18478
  *
@@ -35,7 +35,8 @@
  *  * j belongs to the body frame: n_I = q * n_B
  */
 
-#include "satellites/macromodel_core.hpp"
+#include "macromodel_surface_element.hpp"
+#include "satellite_macromodel_traits.hpp"
 #include <vector>
 
 namespace dso {
@@ -113,7 +114,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL6A> {
    *
    * The macromodel contains normal vectors (per surface) in the body-frame ref.
    * system. Here, we are rotating these normal vectors to another ref. frame,
-   * given the rotation quaternion. For the case of Sentinel-6A, we need one 
+   * given the rotation quaternion. For the case of Sentinel-6A, we need one
    * quaternion, to rotate all (normal vectors of the) body frame surfaces.
    *
    * The returned macromodel will contain:
@@ -129,10 +130,10 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL6A> {
    * num_body_frame_surfaces() + num_solar_array_surfaces() * num_solar_arrays()
    *
    */
-  std::vector<MacromodelSurfaceElement>
+  static std::vector<MacromodelSurfaceElement>
   rotate_macromodel(const Eigen::Quaterniond *qbody,
                     [[maybe_unused]] const double *,
-                    [[maybe_unused]] const Eigen::Vector3d *) const noexcept {
+                    [[maybe_unused]] const Eigen::Vector3d *) noexcept {
 
     /* resulting rotated macromodel */
     std::vector<MacromodelSurfaceElement> rotated;

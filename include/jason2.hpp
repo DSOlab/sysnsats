@@ -1,15 +1,15 @@
-#ifndef __DSO_JASON3_MACROMODEL_HPP__
-#define __DSO_JASON3_MACROMODEL_HPP__
+#ifndef __DSO_JASON2_MACROMODEL_HPP__
+#define __DSO_JASON2_MACROMODEL_HPP__
 
 /* @file
  *
- * Jason-3 Macromodel according to:
+ * Jason-2 Macromodel according to:
  * L. Cerri, A. Couhert, P. Ferrage, DORIS satellites models implemented in
  * POE processing, available at:
  * https://ids-doris.org/documents/BC/satellites/DORISSatelliteModels.pdf
  * Version: Ed.Rev.Date 1.19.21/03/2025
  *
- * Jason-3 has two solar panels, which can rotate w.r.t the Y-axis (Bframe).
+ * Jason-2 has two solar panels, which can rotate w.r.t the Y-axis (Bframe).
  * The attitude is distributed by CNES via:
  *  * A body-frame quaternion, and
  *  * Left- and Right- panel rotation angles.
@@ -24,19 +24,21 @@
  * rotate the macromodel though, we get two.
  */
 
-#include "satellites/macromodel_core.hpp"
+#include "macromodel_surface_element.hpp"
+#include "satellite_macromodel_traits.hpp"
 #include <vector>
 
 namespace dso {
 
-template <> struct SatelliteAttitudeTraits<SATELLITE::JASON3> {
+template <> struct SatelliteAttitudeTraits<SATELLITE::JASON2> {
   /** Number of quaternions in measured attitude files. */
   static constexpr int NumQuaternions = 1;
   /** Number of angles in measured attitude files. */
   static constexpr int NumAngles = 2;
-}; /*SatelliteAttitudeTraits<SATELLITE::JASON3>*/
+}; /*SatelliteAttitudeTraits<SATELLITE::JASON1>*/
 
-template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
+template <> struct SatelliteMacromodelTraits<SATELLITE::JASON2> {
+
   static constexpr std::array<MacromodelSurfaceElement, 8> model = {{
       {0.783e0, -1.e0, 0.e0, 0.e0, 0.2000e0, 0.7000e0, 0.1000e0, 0.0000e0,
        0.9870e0, 0.0130},
@@ -50,6 +52,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
        0.9770e0, 0.0170},
       {3.105e0, 0.e0, 0.e0, 1.e0, 0.2130e0, 0.4530e0, 0.3340e0, 0.0370e0,
        0.2870e0, 0.6760},
+      /* solar array (1/2) */
       {9.8e0, 1.e0, 0.e0, 0.e0, 0.1000e0, 0.2950e0, 0.6050e0, 0.0970e0,
        0.0980e0, 0.8030},
       {9.8e0, -1.e0, 0.e0, 0.e0, 0.1000e0, 0.3000e0, 0.6000e0, 0.0350e0,
@@ -68,24 +71,24 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
   /* DORIS 2GHz (S1) Phase center in satellite reference frame in [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> doris_s1_pco() noexcept {
     Eigen::Matrix<double, 3, 1> p;
-    p << 2.4128e0, -0.1325e0, 0.9235e0;
+    p << 1.194e0, -0.598e0, 1.022e0;
     return p;
   }
 
   /* DORIS 400MHz (U2) Phase center in satellite reference frame in [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> doris_u2_pco() noexcept {
     Eigen::Matrix<double, 3, 1> p;
-    p << 2.4128e0, -0.1325e0, 0.7555e0;
+    p << 1.194e0, -0.598e0, 0.858e0;
     return p;
   }
 
   /* Initial value of mass in [kg] */
-  static constexpr double initial_mass() { return 509.6e0; }
+  static constexpr double initial_mass() { return 505.9e0; }
 
   /* Center of gravity coordinates in satellite reference frame [m] (xyz) */
   static Eigen::Matrix<double, 3, 1> initial_cog() noexcept {
     Eigen::Matrix<double, 3, 1> p;
-    p << 1.0023e0, 0.0000e0, -0.0021e0;
+    p << 0.9768e0, 0.0001e0, 0.0011e0;
     return p;
   }
 
@@ -95,7 +98,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
    * system. Here, we are rotating these normal vectors to another ref. frame,
    * given the rotation angles/quaternions.
    *
-   * For the case of Jason-3 (as in all Jason satellite series), we need one
+   * For the case of Jason-2 (as in all Jason satellite series), we need one
    * quaternion, to rotate all (normal vectors of the) body frame surfaces and
    * two angles (w.r.t the body-frame y-axis) to rotate the left and the right
    * solar arrays. Note that the macromodel only contains info for one solar
@@ -127,9 +130,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
    * num_body_frame_surfaces() + num_solar_array_surfaces() * num_solar_arrays()
    *
    */
-  std::vector<MacromodelSurfaceElement> rotate_macromodel(
+  static std::vector<MacromodelSurfaceElement> rotate_macromodel(
       const Eigen::Quaterniond *qbody, const double *thetas,
-      [[maybe_unused]] const Eigen::Vector3d * = nullptr) const noexcept {
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
 
     /* resulting rotated macromodel (add one solar array) */
     std::vector<MacromodelSurfaceElement> rotated;
@@ -169,7 +172,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
 
     return rotated;
   }
-}; /* MacroModel<SATELLITE::Jason3> */
+}; /* MacroModel<SATELLITE::Jason2> */
 
 } /* namespace dso */
 

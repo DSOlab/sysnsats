@@ -4,8 +4,8 @@
 #include "eigen3/Eigen/Eigen"
 #include "iers/iersconst.hpp"
 
-namespace dso
-{
+namespace dso {
+
 /** @brief Occulation factor according to the conical model.
  *
  * This model only consideres the Sun/Earth/satellite geometry, ignoring
@@ -23,8 +23,8 @@ namespace dso
  */
 double conical_occultation(const Eigen::Vector3d &rsat,
                            const Eigen::Vector3d &rsun,
-                           double Re = iers2010::Re,
-                           double Rs = iers2010::Rs) noexcept;
+                           double Re = ::iers2010::Re,
+                           double Rs = ::iers2010::Rs) noexcept;
 } /* namespace dso */
 
 #endif

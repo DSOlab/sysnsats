@@ -66,6 +66,13 @@ PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   # Public headers during install time
   $<INSTALL_INTERFACE:include/sysnsats>
+#PRIVATE
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/satellites>
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/core>
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/systems>
+#  $<INSTALL_INTERFACE:include/sysnsats/satellites>
+#  $<INSTALL_INTERFACE:include/sysnsats/core>
+#  $<INSTALL_INTERFACE:include/sysnsats/system>
 )
 
 # library source code
@@ -82,6 +89,11 @@ if(BUILD_TESTING)
   enable_testing()
 endif()
 
+# Install public headers at: $PREFIX/sysnsats/...
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+	DESTINATION include/sysnsats
+)
+
 # install library
 install(TARGETS sysnsats
         EXPORT sysnsatsTargets
@@ -90,15 +102,6 @@ install(TARGETS sysnsats
         RUNTIME DESTINATION bin
 )
 
-# Install public headers at: $PREFIX/sysnsats/...
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-	DESTINATION include/sysnsats
-)
-
-# Install private headers to a separate directory $PREFIX/sysnsats/core
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/core/ 
-        DESTINATION include/sysnsats/core
-)
 
 install(EXPORT sysnsatsTargets
         FILE sysnsatsTargets.cmake
