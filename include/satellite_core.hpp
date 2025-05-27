@@ -78,7 +78,7 @@ template <SATELLITE S> struct SatelliteAttitudeTraits {};
  *                       applied to the initial CoG point, in body-fixed RF.
  * @return Anything other than zero denotes an error.
  */
-int cnes_satellite_correction(const char *satmass_fn, MjdEpoch &t,
+int cnes_satellite_correction(const char *satmass_fn, const MjdEpoch &t,
                               double &dmass, Eigen::Vector3d &dxyz) noexcept;
 
 } /* namespace dso */

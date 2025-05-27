@@ -14,7 +14,7 @@ const char *skipws(const char *strin) noexcept {
 }
 } /* anonymous namespace */
 
-int dso::cnes_satellite_correction(const char *satmass_fn, MjdEpoch &t,
+int dso::cnes_satellite_correction(const char *satmass_fn, const MjdEpoch &t,
                                    double &dmass,
                                    Eigen::Matrix<double, 3, 1> &dxyz) noexcept {
   std::ifstream fin(satmass_fn);
@@ -58,7 +58,6 @@ int dso::cnes_satellite_correction(const char *satmass_fn, MjdEpoch &t,
       /* set current date as tn */
       tn = dso::MjdEpoch::from_cnes_jd((double)cjd)
                .add_seconds(dso::FractionalSeconds(data[0]));
-      // tn.add_seconds(dso::FractionalSeconds(data[0]));
 
       /* stop if we are on the right interval */
       if ((!error) && (t >= tp && t < tn)) {

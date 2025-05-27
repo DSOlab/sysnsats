@@ -21,11 +21,14 @@ namespace dso {
 /** @brief SatelliteMacromodelImpl utilities API. */
 template <SATELLITE S> struct SatelliteMacromodelImpl {
   using Traits = SatelliteMacromodelTraits<S>;
+
   static std::vector<MacromodelSurfaceElement>
   rotate_macromodel(const Eigen::Quaterniond *qbody, const double *angles,
                     const Eigen::Vector3d *vecs) noexcept {
     return Traits::rotate_macromodel(qbody, angles, vecs);
   };
+
+  static double satellite_mass() noexcept { return Traits::initial_mass(); }
 };
 
 class SatelliteMacromodel {
@@ -38,7 +41,8 @@ class SatelliteMacromodel {
         [[maybe_unused]] const double *thetas,
         [[maybe_unused]] const Eigen::Vector3d *vecs = nullptr) const noexcept {
       return std::vector<MacromodelSurfaceElement>{};
-    };
+    }
+    virtual double satellite_mass() const noexcept { return 0e0; }
   }; /* SatelliteMacromodel::Concept */
 
   /** @brief  Step 2: Templated model that wraps any SatelliteMacromodel<S> */
@@ -50,10 +54,13 @@ class SatelliteMacromodel {
                       const Eigen::Vector3d *vecs = nullptr) const noexcept {
       return impl.rotate_macromodel(qbody, thetas, vecs);
     }
+    double satellite_mass() const noexcept { return impl.satellite_mass(); }
   }; /* SatelliteMacromodel::Model<Impl> */
 
   /** @brief Step 3 : Raw pointer to concept (type - erased storage) */
   Concept *self;
+  /** @brief Mass correction for a given epoch */
+  double mdmass{0e0};
 
 public:
   /** @brief Constructor: creates a concrete model (Step 4). */
@@ -73,7 +80,16 @@ public:
   rotate_macromodel(const Eigen::Quaterniond *qbody, const double *thetas,
                     const Eigen::Vector3d *vecs = nullptr) const noexcept {
     return self->rotate_macromodel(qbody, thetas, vecs);
-  }; /* class SatelliteMacroModel */
+  }
+
+  double satellite_mass() const noexcept {
+    return self->satellite_mass() + mdmass;
+  }
+
+  int load_satellite_mass_correction(const char *cnes_fn, const dso::MjdEpoch &t) {
+    Eigen::Vector3d dummy;
+    return dso::cnes_satellite_correction(cnes_fn, t, mdmass, dummy);
+  }
 
   /** @brief Factory */
   static SatelliteMacromodel createSatelliteMacromodel(SATELLITE sat) {
