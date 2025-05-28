@@ -19,7 +19,8 @@ enum class SATELLITE {
   JASON3,
   SENTINEL3A,
   SENTINEL3B,
-  SENTINEL6A
+  SENTINEL6A,
+  UNKNOWN
 }; /* enum SATELLITE */
 
 /** @brief Trnaslate a 3-char satellite identifier string to a SATELLITE.

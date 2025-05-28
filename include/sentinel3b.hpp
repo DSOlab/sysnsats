@@ -58,6 +58,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> {
         0.621},
        {10.5e0, -1.e0, 0.e0, 0.e0, 0.000e0, 0.109e0, 0.729e0, 0.000e0, 0.197e0,
         0.657}}};
+  
+  /* mean Area in [m^2] for computing SRP with cannonball model */
+  static constexpr double srp_cannonball_area() { return 10.5*2. + 1.95; };
 
   /* number of body-frame plates/surfaces in macromodel */
   static constexpr int num_body_frame_surfaces() { return 6; }

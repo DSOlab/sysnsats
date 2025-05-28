@@ -29,6 +29,7 @@ template <SATELLITE S> struct SatelliteMacromodelImpl {
   };
 
   static double satellite_mass() noexcept { return Traits::initial_mass(); }
+  static double srp_cannonball_area() noexcept { return Traits::srp_cannonball_area(); }
 };
 
 class SatelliteMacromodel {
@@ -43,6 +44,7 @@ class SatelliteMacromodel {
       return std::vector<MacromodelSurfaceElement>{};
     }
     virtual double satellite_mass() const noexcept { return 0e0; }
+    virtual double srp_cannonball_area() const noexcept { return 0e0; }
   }; /* SatelliteMacromodel::Concept */
 
   /** @brief  Step 2: Templated model that wraps any SatelliteMacromodel<S> */
@@ -55,6 +57,7 @@ class SatelliteMacromodel {
       return impl.rotate_macromodel(qbody, thetas, vecs);
     }
     double satellite_mass() const noexcept { return impl.satellite_mass(); }
+    double srp_cannonball_area() const noexcept { return impl.srp_cannonball_area(); }
   }; /* SatelliteMacromodel::Model<Impl> */
 
   /** @brief Step 3 : Raw pointer to concept (type - erased storage) */
@@ -85,6 +88,8 @@ public:
   double satellite_mass() const noexcept {
     return self->satellite_mass() + mdmass;
   }
+
+  double srp_cannoball_area() const noexcept { return self->srp_cannonball_area(); }
 
   int load_satellite_mass_correction(const char *cnes_fn, const dso::MjdEpoch &t) {
     Eigen::Vector3d dummy;

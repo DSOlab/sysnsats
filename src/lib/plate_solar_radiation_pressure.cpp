@@ -6,6 +6,7 @@ Eigen::Vector3d dso::plate_solar_radiation_pressure(
   /* cos(theta) between directions of surface normal and sun-satellite */
   const double ct = r.dot(a.normal());
   if (ct < 0) {
+    // printf("%.3f +", a.area());
     return a.area() * ct *
            (2e0 * a.spec_optical() * ct * a.normal() +
             a.diff_optical() * (r - (2e0 / 3e0) * a.normal()) +

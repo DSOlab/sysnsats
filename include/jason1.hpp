@@ -60,6 +60,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON1> {
        {9.8e0, -1e0, 0e0, 0e0, 0.0040e0, 0.2980e0, 0.6970e0, 0.0350e0, 0.0350e0,
         0.9310e0}}};
 
+  /* mean Area in [m^2] for computing SRP with cannonball model */
+  static constexpr double srp_cannonball_area() { return 9.8*2. + (1.65+3.); };
+
   /* number of body-frame plates/surfaces in macromodel */
   static constexpr int num_body_frame_surfaces() { return 6; }
 
