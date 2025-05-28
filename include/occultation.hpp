@@ -25,6 +25,12 @@ double conical_occultation(const Eigen::Vector3d &rsat,
                            const Eigen::Vector3d &rsun,
                            double Re = ::iers2010::Re,
                            double Rs = ::iers2010::Rs) noexcept;
+
+double conical_occultation(const Eigen::Vector3d &rsat,
+                           const Eigen::Vector3d &rsun,
+                           const Eigen::Vector3d &rb,
+                           double Rtb,
+                           double Rs = ::iers2010::Rs) noexcept;
 } /* namespace dso */
 
 #endif
