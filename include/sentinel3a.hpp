@@ -59,7 +59,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3A> {
       {10.5e0, -1.e0, 0.e0, 0.e0, 0.000e0, 0.109e0, 0.729e0, 0.000e0, 0.197e0,
        0.657},
   }};
-  
+
   /* mean Area in [m^2] for computing SRP with cannonball model */
   static constexpr double srp_cannonball_area() { return 10.5 + 4.68; };
 
@@ -153,14 +153,15 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3A> {
     for (int i = 0; i < num_body_frame_surfaces(); i++) {
       rotated.emplace_back(*it);
       /* apply rotation via quaternion */
-      rotated[i].normal() = (*qbody) * it->normal();
+      rotated[i].normal() = (*qbody).conjugate() * it->normal();
       ++it;
     }
 
     /* solar array, 2 surfaces, normal vec is satellite-to-sun */
     for (int i = 0; i < num_solar_array_surfaces(); i++) {
       rotated.emplace_back(*it);
-      rotated[num_body_frame_surfaces() + i].normal() = satsun->normalized();
+      rotated[num_body_frame_surfaces() + i].normal() =
+          -1e0 * satsun->normalized();
       ++it;
     }
 

@@ -76,7 +76,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL6A> {
       {0.8123e0, 0.e0, 0.e0, 1.e0, 0.190e0, 0.560e0, 0.250e0, 0.100e0, 0.800e0,
        0.100},
   }};
-  
+
   /* mean Area in [m^2] for computing SRP with cannonball model */
   static constexpr double srp_cannonball_area() { return 11.83; };
 
@@ -150,7 +150,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL6A> {
     for (int i = 0; i < num_body_frame_surfaces(); i++) {
       rotated.emplace_back(*it);
       /* apply rotation via quaternion */
-      rotated[i].normal() = (*qbody) * it->normal();
+      rotated[i].normal() = (*qbody).conjugate() * it->normal();
       ++it;
     }
 
