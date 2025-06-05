@@ -76,8 +76,9 @@ int parse_attitude_line_impl(const char *line, int num_quaternions,
 #ifdef DEBUG
   if (error) {
     fprintf(stderr,
-            "[ERROR] Failed parsing %d angles from line [%s] (traceback: %s)\n",
-            num_angles, line, __func__);
+            "[ERROR] Failed parsing %d angles from line [%s]; error=%d "
+            "(traceback: %s)\n",
+            num_angles, line, error, __func__);
   }
 #endif
 
