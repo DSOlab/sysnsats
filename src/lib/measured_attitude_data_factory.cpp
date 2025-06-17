@@ -31,6 +31,11 @@ dso::attitude_details::MeasuredAttitudeData dso::measured_attitude_data_factory(
       return dso::attitude_details::MeasuredAttitudeData(
           SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumQuaternions,
           SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles);
+    
+    case (SATELLITE::SWOT):
+      return dso::attitude_details::MeasuredAttitudeData(
+          SatelliteAttitudeTraits<SATELLITE::SWOT>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::SWOT>::NumAngles);
     default:
       throw std::runtime_error(
           "[ERROR] Failed to construct MeasuredAttitude\n");

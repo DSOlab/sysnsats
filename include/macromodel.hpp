@@ -114,6 +114,9 @@ public:
     case SATELLITE::SENTINEL6A:
       return SatelliteMacromodel(
           SatelliteMacromodelImpl<SATELLITE::SENTINEL6A>{});
+    case SATELLITE::SWOT:
+      return SatelliteMacromodel(
+          SatelliteMacromodelImpl<SATELLITE::SWOT>{});
     default:
       throw std::runtime_error(
           "[ERROR] Unknown satellite, failed to create Macromodel!\n");

@@ -20,6 +20,7 @@ enum class SATELLITE {
   SENTINEL3A,
   SENTINEL3B,
   SENTINEL6A,
+  SWOT,
   UNKNOWN
 }; /* enum SATELLITE */
 

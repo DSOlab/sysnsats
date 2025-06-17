@@ -109,6 +109,11 @@ class MeasuredAttitude final : public SatelliteAttitude {
       return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
           fn, SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumQuaternions,
           SatelliteAttitudeTraits<SATELLITE::SENTINEL6A>::NumAngles, t);
+    
+    case (SATELLITE::SWOT):
+      return DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>(
+          fn, SatelliteAttitudeTraits<SATELLITE::SWOT>::NumQuaternions,
+          SatelliteAttitudeTraits<SATELLITE::SWOT>::NumAngles, t);
     default:
       throw std::runtime_error(
           "[ERROR] Failed to construct MeasuredAttitude\n");
