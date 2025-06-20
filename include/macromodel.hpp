@@ -29,7 +29,9 @@ template <SATELLITE S> struct SatelliteMacromodelImpl {
   };
 
   static double satellite_mass() noexcept { return Traits::initial_mass(); }
-  static double srp_cannonball_area() noexcept { return Traits::srp_cannonball_area(); }
+  static double srp_cannonball_area() noexcept {
+    return Traits::srp_cannonball_area();
+  }
 };
 
 class SatelliteMacromodel {
@@ -57,7 +59,9 @@ class SatelliteMacromodel {
       return impl.rotate_macromodel(qbody, thetas, vecs);
     }
     double satellite_mass() const noexcept { return impl.satellite_mass(); }
-    double srp_cannonball_area() const noexcept { return impl.srp_cannonball_area(); }
+    double srp_cannonball_area() const noexcept {
+      return impl.srp_cannonball_area();
+    }
   }; /* SatelliteMacromodel::Model<Impl> */
 
   /** @brief Step 3 : Raw pointer to concept (type - erased storage) */
@@ -89,9 +93,12 @@ public:
     return self->satellite_mass() + mdmass;
   }
 
-  double srp_cannoball_area() const noexcept { return self->srp_cannonball_area(); }
+  double srp_cannoball_area() const noexcept {
+    return self->srp_cannonball_area();
+  }
 
-  int load_satellite_mass_correction(const char *cnes_fn, const dso::MjdEpoch &t) {
+  int load_satellite_mass_correction(const char *cnes_fn,
+                                     const dso::MjdEpoch &t) {
     Eigen::Vector3d dummy;
     return dso::cnes_satellite_correction(cnes_fn, t, mdmass, dummy);
   }
@@ -115,8 +122,12 @@ public:
       return SatelliteMacromodel(
           SatelliteMacromodelImpl<SATELLITE::SENTINEL6A>{});
     case SATELLITE::SWOT:
+      return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::SWOT>{});
+    case SATELLITE::CRYOSAT2:
       return SatelliteMacromodel(
-          SatelliteMacromodelImpl<SATELLITE::SWOT>{});
+          SatelliteMacromodelImpl<SATELLITE::CRYOSAT2>{});
+    case SATELLITE::SPOT4:
+      return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::SPOT4>{});
     default:
       throw std::runtime_error(
           "[ERROR] Unknown satellite, failed to create Macromodel!\n");

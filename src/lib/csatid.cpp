@@ -21,6 +21,10 @@ dso::SATELLITE dso::translate_satid(const char *satid) {
     return dso::SATELLITE::SENTINEL6A;
   else if (!std::strncmp(satid, "swo", 3))
     return dso::SATELLITE::SWOT;
+  else if (!std::strncmp(satid, "cs2", 3))
+    return dso::SATELLITE::CRYOSAT2;
+  else if (!std::strncmp(satid, "sp4", 3))
+    return dso::SATELLITE::SPOT4;
   /* should never reach this point ... */
   throw std::runtime_error("[ERROR] Failed to translate satellite id " +
                            std::string(satid) +
@@ -45,8 +49,12 @@ dso::SATELLITE dso::translate_sp3_satid(const char *satid) {
     return SATELLITE::SENTINEL3A;
   else if (!std::strncmp("L75", satid, 3))
     return SATELLITE::SENTINEL3B;
-  else if (!std::strncmp("L75", satid, 3))
+  else if (!std::strncmp("L76", satid, 3))
     return SATELLITE::SWOT;
+  else if (!std::strncmp("L12", satid, 3))
+    return SATELLITE::CRYOSAT2;
+  else if (!std::strncmp("L93", satid, 3))
+    return SATELLITE::SPOT4;
   else
     throw std::runtime_error("[ERROR] Failed to match Sp3 satellite id " +
                              std::string(satid, 3) +

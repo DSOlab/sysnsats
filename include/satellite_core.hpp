@@ -21,6 +21,8 @@ enum class SATELLITE {
   SENTINEL3B,
   SENTINEL6A,
   SWOT,
+  CRYOSAT2,
+  SPOT4,
   UNKNOWN
 }; /* enum SATELLITE */
 
@@ -41,8 +43,8 @@ SATELLITE translate_satid(const char *satid);
 
 /** @brief Translate an Sp3 satellite code to a SATELLITE enum.
  *
- * Only the first three chars of the passed in array are considered, hence the 
- * string does not have to be null-terminated. The function will throw if the 
+ * Only the first three chars of the passed in array are considered, hence the
+ * string does not have to be null-terminated. The function will throw if the
  * id is not matched to a SATELLITE enum.
  * See list at https://cddis.nasa.gov/Techniques/sp3c_satlist.html
  *
