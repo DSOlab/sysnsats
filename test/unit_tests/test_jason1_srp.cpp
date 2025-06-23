@@ -1,5 +1,4 @@
 #include "attitude.hpp"
-#include "macromodel.hpp"
 #include <cstdio>
 #ifdef NDEBUG
 #undef NDEBUG
@@ -11,8 +10,7 @@ using namespace dso;
 struct {
   MjdEpoch t_;
   double x, y, z;
-} Data[] = {
-}; /* Data array */
+} Data[] = {}; /* Data array */
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
@@ -22,7 +20,7 @@ int main(int argc, char *argv[]) {
 
   /* pointer to base class; get the measured attitude stream for the satellite
    */
-  SatelliteAttitude *att = new MeasuredAttitude(SATELLITE::JASON1, argv[1]);
+  Attitude *att = new MeasuredAttitude(SATELLITE::JASON1, argv[1]);
 
   /* create a Macromodel instance for the satellite */
   const auto macrom =

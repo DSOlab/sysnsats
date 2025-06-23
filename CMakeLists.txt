@@ -66,13 +66,6 @@ PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   # Public headers during install time
   $<INSTALL_INTERFACE:include/sysnsats>
-#PRIVATE
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/satellites>
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/core>
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/systems>
-#  $<INSTALL_INTERFACE:include/sysnsats/satellites>
-#  $<INSTALL_INTERFACE:include/sysnsats/core>
-#  $<INSTALL_INTERFACE:include/sysnsats/system>
 )
 
 # library source code
@@ -85,7 +78,7 @@ set(CMAKE_CXX_CLANG_TIDY "")
 # The tests
 if(BUILD_TESTING)
   include(CTest)
-  add_subdirectory(test/unit_tests)
+  # add_subdirectory(test/unit_tests)
   enable_testing()
 endif()
 

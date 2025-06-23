@@ -8,6 +8,7 @@
 #include "sentinel3a.hpp"
 #include "sentinel3b.hpp"
 #include "sentinel6a.hpp"
+#include "spot4.hpp"
 #include "swot.hpp"
 
 #endif
