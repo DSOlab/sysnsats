@@ -43,17 +43,15 @@ attitude_details::MeasuredAttitudeData
 measured_attitude_data_factory(SATELLITE sat);
 
 /** @brief Base class, does nothing usefull! */
-class SatelliteAttitude {
+class SatelliteAttitudeModel {
   /** the satellite */
   SATELLITE msat;
 
 public:
   /** @brief Constructor */
-  SatelliteAttitude(SATELLITE s) noexcept : msat(s) {};
-
+  SatelliteAttitudeModel(SATELLITE s) noexcept : msat(s) {};
   /** @brief Must define a virtual destructor. */
-  virtual ~SatelliteAttitude() noexcept = default;
-
+  virtual ~SatelliteAttitudeModel() noexcept = default;
   SATELLITE satellite() const noexcept { return msat; }
 
   /** @brief Get the attitude at any given epoch.
@@ -64,19 +62,51 @@ public:
    *
    * This function should be overidden by any inherited class.
    */
-  virtual int
-  attitude_at(const MjdEpoch &t,
-              attitude_details::MeasuredAttitudeData &att) noexcept = 0;
+  // virtual int
+  // attitude_at(const MjdEpoch &t,
+  //             attitude_details::MeasuredAttitudeData &att) noexcept = 0;
+
+  virtual attitude_details::MeasuredAttitudeData *
+  attitude_at(const MjdEpoch &) noexcept = 0;
+  virtual Eigen::Quaterniond *measured_quaternions() const noexcept = 0;
+  virtual const double *measured_angles() const noexcept = 0;
   virtual int reload() = 0;
 }; /* SatelliteAttitude */
 
-/** @brief Measured attitude, i.e. a number of quaternions and/or angles. */
-class MeasuredAttitude final : public SatelliteAttitude {
+/** @brief MeasuredAttitude, for satellites with (measured) attitude data.
+ *
+ * This class implies :
+ * 1. a satellite macromodel,
+ * 2. a data stream to get measured attitude data from
+ * 3. a MeasuredAttitudeData instance to assist data extraction
+ *
+ * Measured attitude is provided by data files in DSO format, that can hold
+ * a number of quaternions and/or angles for specific epochs. The number of
+ * quaternions and angles needed to define the attitude is variable for each
+ * satellite.
+ *
+ * i.e. a number of quaternions and/or angles. */
+class MeasuredAttitude final : public SatelliteAttitudeModel {
+  /* alias for attitude data stream */
   using BType =
       DsoAttitudeStream<satellite_details::MeasuredAttitudeBufferSize>;
   /** Measured attitude stream */
   BType matt;
+  /** An instance of MeasuredAttitudeData for the given satellite */
+  attitude_details::MeasuredAttitudeData mdata;
 
+  /** @brief Factory; create and return a Measured attitude stream.
+   *
+   * This function is normally used by the (MeasuredAttitude) constructor to
+   * create a MeasuredAttitude instance's matt member variable.
+   *
+   * @param[in] sat The satellite (as SATELLITE enum)
+   * @param[in] fn  The measured attitude data filename. Should be in DSO
+   * format and depending on the satellite can have a variable number of
+   * quaternions and/or rotation angles. Time-stamps in the file are expected in
+   * [TT] timescale.
+   * @param[in] t   Position the stream in this instant (optional).
+   */
   BType static factory(SATELLITE sat, const char *fn,
                        const MjdEpoch &t = MjdEpoch::min()) {
     switch (sat) {
@@ -127,6 +157,7 @@ class MeasuredAttitude final : public SatelliteAttitude {
 
 public:
   /** @brief Constructor.
+   *
    * @param[in] sat The satellite.
    * @param[in] fn  The name of the input file to stream measure attitude
    * information from. These files are preprocessed by DSO and are expected to
@@ -134,34 +165,122 @@ public:
    */
   MeasuredAttitude(SATELLITE sat, const char *fn,
                    const MjdEpoch &t = MjdEpoch::min())
-      : SatelliteAttitude(sat), matt(MeasuredAttitude::factory(sat, fn, t)) {}
+      : SatelliteAttitudeModel(sat),
+        matt(MeasuredAttitude::factory(sat, fn, t)),
+        mdata(measured_attitude_data_factory(sat)) {}
 
-  int attitude_at(
-      const MjdEpoch &t,
-      attitude_details::MeasuredAttitudeData &att) noexcept override {
-    return matt.attitude_at(t, att);
+  /** @brief get attitude data and store it in instance's mdata member.*/
+  attitude_details::MeasuredAttitudeData *
+  attitude_at(const MjdEpoch &t) noexcept {
+    int error = matt.attitude_at(t, mdata);
+    if (error)
+      return nullptr;
+    return &mdata;
   }
 
-  int reload() { return matt.reload(); }
+  /**/
+  Eigen::Quaterniond *measured_quaternions() noexcept override {
+    return mdata.quaternions();
+  }
+
+  /** @brief Reload the stream, restart from top of file. */
+  int reload() override { return matt.reload(); }
 }; /* MeasuredAttitude */
 
 /** @brief Phase-law attitude (not measured). */
-class PhaseLawAttitude final : public SatelliteAttitude {
+class PhaseLawAttitude final : public SatelliteAttitudeModel {
 public:
-  int attitude_at(
-      const MjdEpoch &t,
-      attitude_details::MeasuredAttitudeData &att) noexcept override;
+  /** @brief No-op */
+  attitude_details::MeasuredAttitudeData *
+  attitude_at(const MjdEpoch &) noexcept {
+    return nullptr;
+  }
+
+  /** @brief No-op */
+  int reload() override { return 0; }
 }; /* PhaseLawAttitude */
 
 /** @brief No attitude at all. */
-class NoAttitude final : public SatelliteAttitude {
+class NoAttitude final : public SatelliteAttitudeModel {
 public:
-  int attitude_at([[maybe_unused]] const MjdEpoch &,
-                  [[maybe_unused]] attitude_details::MeasuredAttitudeData
-                      &) noexcept override {
-    return 0;
-  };
+  /** @brief No-op */
+  attitude_details::MeasuredAttitudeData *
+  attitude_at(const MjdEpoch &) noexcept {
+    return nullptr;
+  }
+  /** @brief No-op */
+  int reload() override { return 0; }
 }; /* NoAttitude */
+
+class Attitude {
+  /* generic function pointer */
+  using RotateFnPtr = std::vector<MacromodelSurfaceElement> (*)(
+      const Eigen::Quaterniond *quaternions, const double *angles,
+      const Eigen::Vector3d *vectors) noexcept;
+
+  /* the macromodel (if-any) */
+  SatelliteAttitudeModel *mmodel;
+  /* pointer to a function which rotates the macromodel (should be assigned at
+   * construction) */
+  RotateFnPtr mrotfn;
+
+public:
+  std::vector<MacromodelSurfaceElement>
+  rotated_macromodel(const MjdEpoch &tt,
+                     const Eigen::Vector3d *vectors = nullptr) noexcept {
+    if (mmodel->attitude_at(tt)) {
+      throw std::runtime_error("");
+    }
+    return mrotfn();
+  }
+
+  Attitude(SATELLITE sat, const char *fn, const MjdEpoch &t = MjdEpoch::min()) {
+    switch (sat) {
+      /* satellites expecting measured attitude */
+    case (SATELLITE::JASON1): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::JASON1> traits{};
+      mrotfn = &SatelliteMacromodelTraits<SATELLITE::JASON1>::rotate_macromodel;
+    } break;
+    case (SATELLITE::JASON2): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::JASON2> traits{};
+    } break;
+    case (SATELLITE::JASON3): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::JASON3> traits{};
+    } break;
+    case (SATELLITE::SENTINEL3A): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::SENTINEL3A> traits{};
+    } break;
+    case (SATELLITE::SENTINEL3B): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> traits{};
+    } break;
+    case (SATELLITE::SENTINEL6A): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::SENTINEL6A> traits{};
+    } break;
+    case (SATELLITE::SWOT): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::SWOT> traits{};
+    } break;
+    case (SATELLITE::CRYOSAT2): {
+      mmodel = new MeasuredAttitude(sat, fn, t);
+      static const SatelliteMacromodelTraits<SATELLITE::CRYOSAT2> traits{};
+    } break;
+      /* satellites with phase law */
+    case (SATELLITE::SPOT4):
+      mmodel = new PhaseLawAttitude();
+      break;
+      /* no attitude */
+    default:
+      mmodel = new NoAttitude();
+    }
+  }
+
+}; /* class Attitude */
 
 } /* namespace dso */
 

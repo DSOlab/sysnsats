@@ -74,6 +74,7 @@ struct MeasuredAttitudeData {
 
   const Eigen::Quaterniond &quaternion() const noexcept { return mq_; }
   Eigen::Quaterniond &quaternion() noexcept { return mq_; }
+
   Eigen::Quaterniond *quaternions() noexcept { return &mq_; }
   const Eigen::Quaterniond *quaternions() const noexcept { return &mq_; }
 

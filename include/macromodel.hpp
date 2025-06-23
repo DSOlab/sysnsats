@@ -17,7 +17,6 @@
 #include "satellite.hpp"
 
 namespace dso {
-
 /** @brief SatelliteMacromodelImpl utilities API. */
 template <SATELLITE S> struct SatelliteMacromodelImpl {
   using Traits = SatelliteMacromodelTraits<S>;
@@ -35,7 +34,6 @@ template <SATELLITE S> struct SatelliteMacromodelImpl {
 };
 
 class SatelliteMacromodel {
-
   /** @brief Step 1:  Base "concept" interface (virtual, abstract). */
   struct Concept {
     virtual ~Concept() = default;
@@ -128,6 +126,7 @@ public:
           SatelliteMacromodelImpl<SATELLITE::CRYOSAT2>{});
     case SATELLITE::SPOT4:
       return SatelliteMacromodel(SatelliteMacromodelImpl<SATELLITE::SPOT4>{});
+
     default:
       throw std::runtime_error(
           "[ERROR] Unknown satellite, failed to create Macromodel!\n");
