@@ -162,7 +162,7 @@ public:
 
   /** @brief get attitude data and store it in instance's mdata member.*/
   attitude_details::MeasuredAttitudeData *
-  attitude_at(const MjdEpoch &t) noexcept {
+  attitude_at(const MjdEpoch &t) noexcept override {
     int error = matt.attitude_at(t, mdata);
     if (error)
       return nullptr;
@@ -170,12 +170,12 @@ public:
   }
 
   /** @brief Return a pointer to measured quaternions (stored in mdata). */
-  const Eigen::Quaterniond *measured_quaternions() const noexcept {
+  const Eigen::Quaterniond *measured_quaternions() const noexcept override {
     return mdata.quaternions();
   }
 
   /** @brief Return a pointer to measured angles (stored in mdata). */
-  const double *measured_angles() const noexcept { return mdata.angles(); }
+  const double *measured_angles() const noexcept override { return mdata.angles(); }
 
   /** @brief Reload the stream, restart from top of file. */
   int reload() override { return matt.reload(); }
@@ -188,7 +188,7 @@ public:
 
   /** @brief No-op */
   attitude_details::MeasuredAttitudeData *
-  attitude_at(const MjdEpoch &) noexcept {
+  attitude_at(const MjdEpoch &) noexcept override {
     return nullptr;
   }
 
@@ -202,7 +202,7 @@ public:
   NoAttitude(SATELLITE sat) : SatelliteAttitudeModel(sat) {};
   /** @brief No-op */
   attitude_details::MeasuredAttitudeData *
-  attitude_at(const MjdEpoch &) noexcept {
+  attitude_at(const MjdEpoch &) noexcept override {
     return nullptr;
   }
   /** @brief No-op */
