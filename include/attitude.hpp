@@ -175,7 +175,9 @@ public:
   }
 
   /** @brief Return a pointer to measured angles (stored in mdata). */
-  const double *measured_angles() const noexcept override { return mdata.angles(); }
+  const double *measured_angles() const noexcept override {
+    return mdata.angles();
+  }
 
   /** @brief Reload the stream, restart from top of file. */
   int reload() override { return matt.reload(); }
@@ -210,8 +212,13 @@ public:
 }; /* NoAttitude */
 
 class Attitude {
-  /* generic function pointer */
-  using RotateFnPtr = std::vector<MacromodelSurfaceElement> (*)(
+  /* generic function pointer -- macromodel rotation */
+  using RotateMacromodelFnPtr = std::vector<MacromodelSurfaceElement> (*)(
+      const Eigen::Quaterniond *quaternions, const double *angles,
+      const Eigen::Vector3d *vectors) noexcept;
+
+  /* generic function pointer -- rotation of on-board eccentricity */
+  using RotateEccentricityFnPtr = Eigen::Quaterniond (*)(
       const Eigen::Quaterniond *quaternions, const double *angles,
       const Eigen::Vector3d *vectors) noexcept;
 
@@ -219,24 +226,38 @@ class Attitude {
   SatelliteAttitudeModel *mmodel;
   /* pointer to a function which rotates the macromodel (should be assigned at
    * construction) */
-  RotateFnPtr mrotfn;
+  RotateMacromodelFnPtr mrotmfn;
+  /* pointer to a function which returns a quaternions (acting from body-frame
+   * to inertial frame) for any veactor on the satellite's main/body */
+  RotateEccentricityFnPtr mrotefn;
   /* initial mass */
   double mmassinit = 0e0;
   /* mass correction */
   double mdmass = 0e0;
 
 public:
-  /* @param[in] vectors A list of 3-d vectors in the order:
-  vectors[0] -> sun-to-satellite vector, cartesian, inertial, geocentric [m]
-  vectors[1] -> satellite position, cartesian, inertial, geocentric, [m]
-  vectors[2] -> satellite velocity, cartesian, inertial, geocentric, [m]
-  */
+  /*
+   * @param[in] vectors A list of 3-d vectors in the order:
+   * - vectors[0] -> sun-to-satellite vector, cartesian, inertial, geocentric
+   * [m]
+   * - vectors[1] -> satellite position, cartesian, inertial, geocentric, [m]
+   * - vectors[2] -> satellite velocity, cartesian, inertial, geocentric, [m]
+   */
   std::vector<MacromodelSurfaceElement>
   rotated_macromodel(const MjdEpoch &tt,
                      const Eigen::Vector3d *vectors = nullptr) noexcept {
     mmodel->attitude_at(tt);
-    return mrotfn(mmodel->measured_quaternions(), mmodel->measured_angles(),
-                  vectors);
+    return mrotmfn(mmodel->measured_quaternions(), mmodel->measured_angles(),
+                   vectors);
+  }
+
+  Eigen::Vector3d rotate_payload_eccentricity(
+      const MjdEpoch &tt, const Eigen::Vector3d &ecc_bf,
+      const Eigen::Vector3d *vectors = nullptr) noexcept {
+    mmodel->attitude_at(tt);
+    const auto q = mrotefn(mmodel->measured_quaternions(),
+                           mmodel->measured_angles(), vectors);
+    return q * ecc_bf;
   }
 
   int load_satellite_mass_correction(const char *cnes_fn,
@@ -254,56 +275,77 @@ public:
       /* satellites expecting measured attitude */
     case (SATELLITE::JASON1): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn = &SatelliteMacromodelTraits<SATELLITE::JASON1>::rotate_macromodel;
+      mrotmfn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit = SatelliteMacromodelTraits<SATELLITE::JASON1>::initial_mass();
     } break;
     case (SATELLITE::JASON2): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn = &SatelliteMacromodelTraits<SATELLITE::JASON2>::rotate_macromodel;
+      mrotmfn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON2>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit = SatelliteMacromodelTraits<SATELLITE::JASON2>::initial_mass();
     } break;
     case (SATELLITE::JASON3): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn = &SatelliteMacromodelTraits<SATELLITE::JASON3>::rotate_macromodel;
+      mrotmfn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON3>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit = SatelliteMacromodelTraits<SATELLITE::JASON3>::initial_mass();
     } break;
     case (SATELLITE::SENTINEL3A): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn =
+      mrotmfn =
           &SatelliteMacromodelTraits<SATELLITE::SENTINEL3A>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit =
           SatelliteMacromodelTraits<SATELLITE::SENTINEL3A>::initial_mass();
     } break;
     case (SATELLITE::SENTINEL3B): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn =
+      mrotmfn =
           &SatelliteMacromodelTraits<SATELLITE::SENTINEL3B>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit =
           SatelliteMacromodelTraits<SATELLITE::SENTINEL3B>::initial_mass();
     } break;
     case (SATELLITE::SENTINEL6A): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn =
+      mrotmfn =
           &SatelliteMacromodelTraits<SATELLITE::SENTINEL6A>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit =
           SatelliteMacromodelTraits<SATELLITE::SENTINEL6A>::initial_mass();
     } break;
     case (SATELLITE::SWOT): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn = &SatelliteMacromodelTraits<SATELLITE::SWOT>::rotate_macromodel;
+      mrotmfn = &SatelliteMacromodelTraits<SATELLITE::SWOT>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit = SatelliteMacromodelTraits<SATELLITE::SWOT>::initial_mass();
     } break;
     case (SATELLITE::CRYOSAT2): {
       mmodel = new MeasuredAttitude(sat, fn, t);
-      mrotfn =
+      mrotmfn =
           &SatelliteMacromodelTraits<SATELLITE::CRYOSAT2>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit =
           SatelliteMacromodelTraits<SATELLITE::CRYOSAT2>::initial_mass();
     } break;
       /* satellites with phase law */
     case (SATELLITE::SPOT4):
       mmodel = new PhaseLawAttitude(sat);
-      mrotfn = &SatelliteMacromodelTraits<SATELLITE::SPOT4>::rotate_macromodel;
+      mrotmfn = &SatelliteMacromodelTraits<SATELLITE::SPOT4>::rotate_macromodel;
+      mrotefn =
+          &SatelliteMacromodelTraits<SATELLITE::JASON1>::bodyframe2inertial;
       mmassinit = SatelliteMacromodelTraits<SATELLITE::SPOT4>::initial_mass();
       break;
       /* no attitude */

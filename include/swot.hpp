@@ -25,17 +25,24 @@ template <> struct SatelliteAttitudeTraits<SATELLITE::SWOT> {
 }; /*SatelliteAttitudeTraits<SATELLITE::SWOT>*/
 
 template <> struct SatelliteMacromodelTraits<SATELLITE::SWOT> {
-  static constexpr std::array<MacromodelSurfaceElement, 8> model = {{
-{7.880e+00,1.000e+00,0.000e+00,0.000e+00,3.600e-01,6.300e-01,1.000e-02,2.000e-02,9.200e-01,6.000e-02},
-{7.880e+00,-1.000e+00,0.000e+00,0.000e+00,3.900e-01,6.000e-01,1.000e-02,4.000e-02,8.600e-01,1.000e-01},
-{1.219e+01,0.000e+00,1.000e+00,0.000e+00,5.600e-01,3.600e-01,8.000e-02,1.400e-01,5.200e-01,3.300e-01},
-{1.219e+01,0.000e+00,-1.000e+00,0.000e+00,3.100e-01,6.900e-01,0.000e+00,0.000e+00,1.000e+00,0.000e+00},
-{7.330e+00,0.000e+00,0.000e+00,1.000e+00,3.100e-01,6.900e-01,0.000e+00,0.000e+00,1.000e+00,0.000e+00},
-{7.330e+00,0.000e+00,0.000e+00,-1.000e+00,3.100e-01,6.900e-01,0.000e+00,0.000e+00,1.000e+00,0.000e+00},
-/* Solar arrays in the frame Xsa1,Ysa1,Zsa1 */
-{3.138e+01,0.000e+00,0.000e+00,1.000e+00,0.000e+00,1.000e-01,9.000e-01,0.000e+00,3.000e-01,7.000e-01},
-{3.138e+01,0.000e+00,0.000e+00,-1.000e+00,1.300e-01,0.000e+00,8.700e-01,0.000e+00,2.000e-01,8.000e-01}
-  }};
+  static constexpr std::array<MacromodelSurfaceElement, 8> model = {
+      {{7.880e+00, 1.000e+00, 0.000e+00, 0.000e+00, 3.600e-01, 6.300e-01,
+        1.000e-02, 2.000e-02, 9.200e-01, 6.000e-02},
+       {7.880e+00, -1.000e+00, 0.000e+00, 0.000e+00, 3.900e-01, 6.000e-01,
+        1.000e-02, 4.000e-02, 8.600e-01, 1.000e-01},
+       {1.219e+01, 0.000e+00, 1.000e+00, 0.000e+00, 5.600e-01, 3.600e-01,
+        8.000e-02, 1.400e-01, 5.200e-01, 3.300e-01},
+       {1.219e+01, 0.000e+00, -1.000e+00, 0.000e+00, 3.100e-01, 6.900e-01,
+        0.000e+00, 0.000e+00, 1.000e+00, 0.000e+00},
+       {7.330e+00, 0.000e+00, 0.000e+00, 1.000e+00, 3.100e-01, 6.900e-01,
+        0.000e+00, 0.000e+00, 1.000e+00, 0.000e+00},
+       {7.330e+00, 0.000e+00, 0.000e+00, -1.000e+00, 3.100e-01, 6.900e-01,
+        0.000e+00, 0.000e+00, 1.000e+00, 0.000e+00},
+       /* Solar arrays in the frame Xsa1,Ysa1,Zsa1 */
+       {3.138e+01, 0.000e+00, 0.000e+00, 1.000e+00, 0.000e+00, 1.000e-01,
+        9.000e-01, 0.000e+00, 3.000e-01, 7.000e-01},
+       {3.138e+01, 0.000e+00, 0.000e+00, -1.000e+00, 1.300e-01, 0.000e+00,
+        8.700e-01, 0.000e+00, 2.000e-01, 8.000e-01}}};
 
   /* mean Area in [m^2] for computing SRP with cannonball model */
   static constexpr double srp_cannonball_area() {
@@ -105,8 +112,8 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SWOT> {
    * need one. This is the quaternion used to rotate the body frame (for each
    * surface normal vector n_bf we apply n = q * n_bf).
    * @param[in] thetas Rotation angles, around the x-axis, for the solar arrays
-   * [rad]. First, i.e. thetas[0] is the angle for the 1/left panel, and 
-   * thetas[1] is the angle for the 2/right panel. For e.g. the left panel, 
+   * [rad]. First, i.e. thetas[0] is the angle for the 1/left panel, and
+   * thetas[1] is the angle for the 2/right panel. For e.g. the left panel,
    * the rotation is: n = q * (Ry(theta) * n_bf)
    * @param[in] satsun Not used
    * @return A vector of MacromodelSurfaceElement's. Its size should equal:
@@ -153,6 +160,26 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SWOT> {
       ++it;
     }
     return rotated;
+  }
+
+  /* Return a (rotation) quaternion q, that transforms a body-fixed vector to
+   * an inertial one, assuming we are on the satellite's body frame.
+
+   * @param[in] qbody A pointer to Eigen::Quaterniond instances. Here, we only
+   * need one. This is the quaternion used to rotate the body frame (for each
+   * surface normal vector n_bf we apply n = q * n_bf).
+   * @param[in] thetas  Not used
+   * @param[in] satsun Not used
+   *
+   * @return A rotation quaternion that works in the sense:
+   * r_inertial = q * r_bodyframe
+   * assuming r_bodyframe is on the satellite's body frame
+   */
+  static Eigen::Quaterniond bodyframe2inertial(
+      const Eigen::Quaterniond *qbody,
+      [[maybe_unused]] const double *thetas = nullptr,
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
+    return *qbody;
   }
 }; /* MacroModel<SATELLITE::SWOT> */
 

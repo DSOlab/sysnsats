@@ -167,6 +167,43 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SPOT4> {
 
     return rotated;
   }
+
+  /* Return a (rotation) quaternion q, that transforms a body-fixed vector to
+   * an inertial one, assuming we are on the satellite's body frame.
+
+   * @param[in] qbody A pointer to Eigen::Quaterniond instances. Here, we only
+   * need one. This is the quaternion used to rotate the body frame (for each
+   * surface normal vector n_bf we apply n = q * n_bf).
+   * @param[in] thetas  Not used
+   * @param[in] satsun Not used
+   *
+   * @return A rotation quaternion that works in the sense:
+   * r_inertial = q * r_bodyframe
+   * assuming r_bodyframe is on the satellite's body frame
+   */
+  static Eigen::Quaterniond
+  bodyframe2inertial([[maybe_unused]] const Eigen::Quaterniond *,
+                     [[maybe_unused]] const double *,
+                     const Eigen::Vector3d *vecs) noexcept {
+    /* The satellite Z axis is oriented as the radial direction. */
+    const Eigen::Vector3d Zsat = vecs[1].normalized();
+    /* The satellite X axis is oriented as the cross-track direction */
+    const Eigen::Vector3d Xsat = vecs[1].cross(vecs[2]).normalized();
+    /* The satellite Y axis is oriented opposite to the along-track direction
+     */
+    const Eigen::Vector3d Ysat = -Xsat.cross(Zsat);
+
+    /* transformation matrix from R_inertial = M * R_bf */
+    Eigen::Matrix3d M;
+    M.col(0) = Xsat;
+    M.col(1) = Ysat;
+    M.col(2) = Zsat;
+    /* convert rotation matrix -> quaternion */
+    Eigen::Quaterniond q(M);
+    /* good practice if R may have small numerical errors */
+    q.normalize();
+    return q;
+  }
 }; /* MacroModel<SATELLITE::SPOT4> */
 
 } /* namespace dso */

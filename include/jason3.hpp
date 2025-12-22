@@ -175,6 +175,26 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
     // printf("> rotating JASON3 macromodel\n");
     return rotated;
   }
+
+  /* Return a (rotation) quaternion q, that transforms a body-fixed vector to
+   * an inertial one, assuming we are on the satellite's body frame.
+
+   * @param[in] qbody A pointer to Eigen::Quaterniond instances. Here, we only
+   * need one. This is the quaternion used to rotate the body frame (for each
+   * surface normal vector n_bf we apply n = q * n_bf).
+   * @param[in] thetas  Not used
+   * @param[in] satsun Not used
+   *
+   * @return A rotation quaternion that works in the sense:
+   * r_inertial = q * r_bodyframe
+   * assuming r_bodyframe is on the satellite's body frame
+   */
+  static Eigen::Quaterniond bodyframe2inertial(
+      const Eigen::Quaterniond *qbody,
+      [[maybe_unused]] const double *thetas = nullptr,
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
+    return *qbody;
+  }
 }; /* MacroModel<SATELLITE::Jason3> */
 
 } /* namespace dso */

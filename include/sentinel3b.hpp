@@ -58,9 +58,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> {
         0.621},
        {10.5e0, -1.e0, 0.e0, 0.e0, 0.000e0, 0.109e0, 0.729e0, 0.000e0, 0.197e0,
         0.657}}};
-  
+
   /* mean Area in [m^2] for computing SRP with cannonball model */
-  static constexpr double srp_cannonball_area() { return 10.5*2. + 1.95; };
+  static constexpr double srp_cannonball_area() { return 10.5 * 2. + 1.95; };
 
   /* number of body-frame plates/surfaces in macromodel */
   static constexpr int num_body_frame_surfaces() { return 6; }
@@ -155,6 +155,26 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::SENTINEL3B> {
     }
 
     return rotated;
+  }
+
+  /* Return a (rotation) quaternion q, that transforms a body-fixed vector to
+   * an inertial one, assuming we are on the satellite's body frame.
+
+   * @param[in] qbody A pointer to Eigen::Quaterniond instances. Here, we only
+   * need one. This is the quaternion used to rotate the body frame (for each
+   * surface normal vector n_bf we apply n = q * n_bf).
+   * @param[in] thetas  Not used
+   * @param[in] satsun Not used
+   *
+   * @return A rotation quaternion that works in the sense:
+   * r_inertial = q * r_bodyframe
+   * assuming r_bodyframe is on the satellite's body frame
+   */
+  static Eigen::Quaterniond bodyframe2inertial(
+      const Eigen::Quaterniond *qbody,
+      [[maybe_unused]] const double *thetas = nullptr,
+      [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
+    return *qbody;
   }
 }; /* MacroModel<SATELLITE::SENTINEL3B> */
 
