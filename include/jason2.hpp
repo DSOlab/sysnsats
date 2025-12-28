@@ -26,9 +26,60 @@
 
 #include "macromodel_surface_element.hpp"
 #include "satellite_macromodel_traits.hpp"
+#include "satellite_payload_traits.hpp"
 #include <vector>
 
 namespace dso {
+
+template <> struct SatellitePayloadTraits<SATELLITE::JASON2> {
+
+  /* DORIS 2GHz (S1) Phase center in satellite reference frame in [m] (xyz) */
+  static Eigen::Matrix<double, 3, 1> doris_s1_pco() noexcept {
+    Eigen::Matrix<double, 3, 1> p;
+    p << 1.194e0, -0.598e0, 1.022e0;
+    return p;
+  }
+
+  /* DORIS 400MHz (U2) Phase center in satellite reference frame in [m] (xyz) */
+  static Eigen::Matrix<double, 3, 1> doris_u2_pco() noexcept {
+    Eigen::Matrix<double, 3, 1> p;
+    p << 1.194e0, -0.598e0, 0.858e0;
+    return p;
+  }
+
+  /* Center of gravity coordinates in satellite reference frame [m] (xyz) */
+  static Eigen::Matrix<double, 3, 1> initial_cog() noexcept {
+    Eigen::Matrix<double, 3, 1> p;
+    p << 0.9768e0, 0.0001e0, 0.0011e0;
+    return p;
+  }
+
+  template <SATELLITE_SYSTEM S>
+  static Eigen::Matrix<double, 3, 1>
+  payload_eccentricity_bf(const char *freq) noexcept {
+    if constexpr (S == SATELLITE_SYSTEM::DORIS) {
+      if (((!std::strcmp(freq, "S1")) || (!std::strcmp(freq, "s1"))) ||
+          ((!std::strcmp(freq, "L1")) || (!std::strcmp(freq, "l1"))))
+        return doris_s1_pco();
+      else if (((!std::strcmp(freq, "U2")) || (!std::strcmp(freq, "u2"))) ||
+               ((!std::strcmp(freq, "L2")) || (!std::strcmp(freq, "l2"))))
+        return doris_u2_pco();
+      else if (((!std::strcmp(freq, "CoM")) || (!std::strcmp(freq, "CM"))) ||
+               ((!std::strcmp(freq, "COM")) || (!std::strcmp(freq, "com"))))
+        return initial_cog();
+      else
+        throw std::runtime_error("[ERROR] Failed fetching payload eccentricity "
+                                 "for DORIS (traceback: "
+                                 "SatellitePayloadTraits<SATELLITE::JASON1>::"
+                                 "payload_eccentricity_bf)\n");
+    }
+    throw std::runtime_error("[ERROR] Failed fetching payload eccentricity -- "
+                             "need to add source code !! (traceback: "
+                             "SatellitePayloadTraits<SATELLITE::JASON1>::"
+                             "payload_eccentricity_bf)\n");
+  }
+
+}; /* SatellitePayloadTraits<SATELLITE::JASON2> */
 
 template <> struct SatelliteAttitudeTraits<SATELLITE::JASON2> {
   /** Number of quaternions in measured attitude files. */
@@ -72,30 +123,9 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON2> {
 
   /* number of solar arrays */
   static constexpr int num_solar_arrays() { return 2; }
-
-  /* DORIS 2GHz (S1) Phase center in satellite reference frame in [m] (xyz) */
-  static Eigen::Matrix<double, 3, 1> doris_s1_pco() noexcept {
-    Eigen::Matrix<double, 3, 1> p;
-    p << 1.194e0, -0.598e0, 1.022e0;
-    return p;
-  }
-
-  /* DORIS 400MHz (U2) Phase center in satellite reference frame in [m] (xyz) */
-  static Eigen::Matrix<double, 3, 1> doris_u2_pco() noexcept {
-    Eigen::Matrix<double, 3, 1> p;
-    p << 1.194e0, -0.598e0, 0.858e0;
-    return p;
-  }
-
+  
   /* Initial value of mass in [kg] */
   static constexpr double initial_mass() { return 505.9e0; }
-
-  /* Center of gravity coordinates in satellite reference frame [m] (xyz) */
-  static Eigen::Matrix<double, 3, 1> initial_cog() noexcept {
-    Eigen::Matrix<double, 3, 1> p;
-    p << 0.9768e0, 0.0001e0, 0.0011e0;
-    return p;
-  }
 
   /** @brief Rotate the macromodel normal vectors (e.g. body frame to Inertial).
    *
