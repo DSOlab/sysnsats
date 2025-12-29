@@ -14,6 +14,11 @@ Eigen::Vector3d solar_radiation_pressure(
     const Eigen::Vector3d &rsat_icf, const Eigen::Vector3d &rsun_icf,
     double sat_mass) noexcept;
 
+Eigen::Vector3d solar_radiation_pressure(
+    const std::vector<MacromodelSurfaceElement> &macromodel_icf,
+    const Eigen::Vector3d &rsat_icf, const Eigen::Vector3d &rsun_icf,
+    double sat_mass, Eigen::Matrix<double, 3, 3> &dard) noexcept;
+
 /* 'Cannonball' model */
 Eigen::Vector3d solar_radiation_pressure(double area,
                                          const Eigen::Vector3d &rsat_icf,

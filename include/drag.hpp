@@ -18,7 +18,8 @@ atmospheric_drag(const std::vector<MacromodelSurfaceElement> &macromodel_icf,
   for (const auto &plate : macromodel_icf) {
     const double ct = vn.dot(plate.normal());
     if (ct < 0) {
-      A += plate.area() * ct;
+      /* note: make this positive (ct is now <0) */
+      A += plate.area() * (-ct);
     }
   }
 
@@ -29,12 +30,13 @@ atmospheric_drag(const std::vector<MacromodelSurfaceElement> &macromodel_icf,
   return acc;
 }
 
-Eigen::Vector3d
-atmospheric_drag(const std::vector<MacromodelSurfaceElement> &macromodel_icf,
-                 const Eigen::Vector3d &vsat_icf, double density,
-                 double sat_mass, const Eigen::Vector3d omega_gcrs,
-                 Eigen::Matrix<double, 3, 3> &dadr,
-                 Eigen::Matrix<double, 3, 3> &dadv) noexcept {
+Eigen::Vector3d atmospheric_drag(
+    const std::vector<MacromodelSurfaceElement> &macromodel_icf,
+    const Eigen::Vector3d &vsat_icf, double density, double sat_mass,
+    const Eigen::Vector3d omega_gcrs,
+    const Eigen::Vector3d &drhodr, /* [dρ/dx, dρ/dy, dρ/dz] as vector */
+    Eigen::Matrix<double, 3, 3> &dadr,
+    Eigen::Matrix<double, 3, 3> &dadv) noexcept {
   /* normalized velocity vector */
   const auto vn = vsat_icf.normalized();
 
@@ -43,7 +45,8 @@ atmospheric_drag(const std::vector<MacromodelSurfaceElement> &macromodel_icf,
   for (const auto &plate : macromodel_icf) {
     const double ct = vn.dot(plate.normal());
     if (ct < 0) {
-      A += plate.area() * ct;
+      /* note: make this positive (ct is now <0) */
+      A += plate.area() * (-ct);
     }
   }
 
@@ -58,7 +61,8 @@ atmospheric_drag(const std::vector<MacromodelSurfaceElement> &macromodel_icf,
   Eigen::Matrix3d W;
   const auto w = omega_gcrs;
   W << 0e0, -w.z(), w.y(), w.z(), 0e0, -w.x(), -w.y(), w.x(), 0e0;
-  dadr = beta * (V * vsat_icf * density_gradient.transpose() - density * S * W);
+  dadr = beta * (V * vsat_icf * drhodr.transpose() - density * S * W);
+  //  (1x1)*(3x1)*(1x3)                   (1x1)*(3x3)*(3x3)
 
   /* gradient da/dv -> 3x3 */
   dadv = beta * density * S;

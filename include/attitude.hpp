@@ -30,6 +30,7 @@
 
 #include "attitude_stream.hpp"
 #include "satellite.hpp"
+#include <eigen3/Eigen/Geometry>
 
 namespace dso {
 namespace satellite_details {
@@ -255,7 +256,7 @@ public:
       const MjdEpoch &tt, const Eigen::Vector3d &ecc_bf,
       const Eigen::Vector3d *vectors = nullptr) noexcept {
     mmodel->attitude_at(tt);
-    const auto q = mrotefn(mmodel->measured_quaternions(),
+    const Eigen::Quaterniond q = mrotefn(mmodel->measured_quaternions(),
                            mmodel->measured_angles(), vectors);
     return q * ecc_bf;
   }

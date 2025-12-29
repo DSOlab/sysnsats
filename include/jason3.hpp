@@ -223,7 +223,7 @@ template <> struct SatelliteMacromodelTraits<SATELLITE::JASON3> {
       const Eigen::Quaterniond *qbody,
       [[maybe_unused]] const double *thetas = nullptr,
       [[maybe_unused]] const Eigen::Vector3d * = nullptr) noexcept {
-    return *qbody;
+    return qbody[0];
   }
 }; /* MacroModel<SATELLITE::Jason3> */
 
