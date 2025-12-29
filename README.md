@@ -1,4 +1,4 @@
-# libsysnsat library
+# C++ libsysnsat library
 libsysnsat is a C++ library for satellite geometry characteristics
 
 # Installation
